@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns="http://java.sun.com/xml/ns/javaee" xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	id="WebApp_ID" version="2.5">
+	<display-name>uhaapi</display-name>
+	<listener>
+		<listener-class>com.uhaapi.server.Configurator</listener-class>
+	</listener>
+
+	<context-param>
+		<param-name>app.user_agent</param-name>
+		<param-value>Unofficial Heavens Above API (uhaapi.com)</param-value>
+	</context-param>
+
+	<filter>
+		<display-name>ErrorTrap</display-name>
+		<filter-name>ErrorTrap</filter-name>
+		<filter-class>com.uhaapi.server.ErrorTrap</filter-class>
+	</filter>
+	<filter-mapping>
+		<filter-name>ErrorTrap</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+	<filter>
+		<display-name>jsonp</display-name>
+		<filter-name>jsonp</filter-name>
+		<filter-class>org.jsonp.JsonpFilter</filter-class>
+		<init-param>
+			<param-name>jsonp</param-name>
+			<param-value>jsonp</param-value>
+		</init-param>
+	</filter>
+	<filter-mapping>
+		<filter-name>jsonp</filter-name>
+		<url-pattern>*</url-pattern>
+	</filter-mapping>
+	<servlet>
+		<servlet-name>SatPasses</servlet-name>
+		<servlet-class>com.uhaapi.server.api.SatPasses</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>SatPasses</servlet-name>
+		<url-pattern>/passes</url-pattern>
+	</servlet-mapping>
+	<mime-mapping>
+		<extension>json</extension>
+		<mime-type>application/json</mime-type>
+	</mime-mapping>
+	<filter>
+		<display-name>RateLImiter</display-name>
+		<filter-name>RateLImiter</filter-name>
+		<filter-class>com.uhaapi.server.RateLImiter</filter-class>
+	</filter>
+	<filter-mapping>
+		<filter-name>RateLImiter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+</web-app>
