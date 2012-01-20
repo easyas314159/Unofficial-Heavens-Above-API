@@ -11,6 +11,9 @@
 	<listener>
 		<listener-class>com.uhaapi.server.MemcachedListener</listener-class>
 	</listener>
+	<listener>
+		<listener-class>com.uhaapi.server.ThreadPoolListener</listener-class>
+	</listener>
 
 	<listener>
 		<listener-class>com.uhaapi.server.ModuleListener</listener-class>

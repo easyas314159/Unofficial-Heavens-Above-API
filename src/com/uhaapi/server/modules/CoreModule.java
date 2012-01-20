@@ -2,6 +2,8 @@ package com.uhaapi.server.modules;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
 
 import javax.servlet.ServletContext;
 
@@ -38,12 +40,17 @@ public class CoreModule extends JerseyServletModule {
 		try {
 			configureInitParameters(context);
 
-			MemcachedClientIF memcached = (MemcachedClientIF)context.getAttribute(MemcachedListener.MEMCACHED);
+			bind(MemcachedClientIF.class)
+				.toProvider(MemcachedClientIFProvider.class);
+			bind(ScheduledExecutorService.class)
+				.toProvider(ScheduledExecutorServiceProvider.class);
+			bind(ExecutorService.class)
+				.to(ScheduledExecutorService.class);
+
+
 			bind(MapsCredentials.class)
 				.toProvider(MapsCredentialsProvider.class)
 				.in(Singleton.class);
-			bind(MemcachedClientIF.class)
-				.toInstance(memcached);
 			bind(HeavensAbove.class)
 				.toProvider(HeavensAboveProvider.class)
 				.in(Singleton.class);
