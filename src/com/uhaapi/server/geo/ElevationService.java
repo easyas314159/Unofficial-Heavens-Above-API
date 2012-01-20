@@ -2,26 +2,28 @@ package com.uhaapi.server.geo;
 
 import java.util.List;
 import java.util.Vector;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+
+import net.spy.memcached.MemcachedClientIF;
 
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
 
-import com.uhaapi.server.cache.Cache;
-import com.uhappi.server.util.GsonUtils;
+import com.uhaapi.server.util.GsonUtils;
 
 public class ElevationService extends MapsService {
-	public ElevationService(String apiKey) {
-		super(null, apiKey);
-	}
-	public ElevationService(String clientId, String clientKey) {
-		super(null, clientId, clientKey);
+	public ElevationService(MemcachedClientIF memcached, MapsCredentials credentials) {
+		super(memcached, credentials);
 	}
 
-	public ElevationService(Cache<String, String> cache, String apiKey) {
-		super(cache, apiKey);
-	}
-	public ElevationService(Cache<String, String> cache, String clientId, String clientKey) {
-		super(cache, clientId, clientKey);
+	public Future<ElevationResponse> elevationAsync(final double lat, final double lng) {
+		return threadPool.submit(new Callable<ElevationResponse>() {
+			@Override
+			public ElevationResponse call() throws Exception {
+				return elevation(lat, lng);
+			}
+		});
 	}
 
 	public ElevationResponse elevation(double lat, double lng) {

@@ -1,4 +1,4 @@
-package com.uhaapi.server.api;
+package com.uhaapi.server.api.entity;
 
 public enum Compass {
 	N  (0.0),

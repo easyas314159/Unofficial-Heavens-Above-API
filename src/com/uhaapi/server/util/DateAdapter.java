@@ -1,4 +1,4 @@
-package com.uhappi.server.util;
+package com.uhaapi.server.util;
 
 import java.lang.reflect.Type;
 import java.util.Date;

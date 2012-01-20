@@ -1,15 +1,25 @@
-package com.uhaapi.server.api;
+package com.uhaapi.server.api.entity;
 
 import java.util.Date;
 
-public class SatPassWaypoint {
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
+
+@XmlAccessorType(XmlAccessType.NONE)
+public class SatellitePassWaypoint {
+	@XmlElement
 	private Date time = null;
+
+	@XmlElement
 	private Double alt = null;
+
+	@XmlElement
 	private Double az = null;
 
-	public SatPassWaypoint() {
+	public SatellitePassWaypoint() {
 	}
-	public SatPassWaypoint(Date time, Double alt, Double az) {
+	public SatellitePassWaypoint(Date time, Double alt, Double az) {
 		setTime(time);
 		setAltitude(alt);
 		setAzimuth(az);

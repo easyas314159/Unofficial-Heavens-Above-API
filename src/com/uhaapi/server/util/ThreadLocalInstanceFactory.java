@@ -1,4 +1,4 @@
-package com.uhappi.server.util;
+package com.uhaapi.server.util;
 
 public abstract class ThreadLocalInstanceFactory<T> {
 	private ThreadLocal<T> threadLocal = new ThreadLocal<T>();

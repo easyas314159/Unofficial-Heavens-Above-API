@@ -1,5 +1,7 @@
 package com.uhaapi.server.cache;
 
+import java.lang.reflect.Type;
+
 import net.spy.memcached.CachedData;
 import net.spy.memcached.transcoders.Transcoder;
 
@@ -8,12 +10,12 @@ import com.google.gson.GsonBuilder;
 
 public class GsonTranscoder<T> implements Transcoder<T> {
 	private Gson gson = null;
-	private Class<T> baseType = null;
+	private Type baseType = null;
 
-	public GsonTranscoder(Class<T> baseType) {
+	public GsonTranscoder(Type baseType) {
 		this(new GsonBuilder(), baseType);
 	}
-	public GsonTranscoder(GsonBuilder gsonBuilder, Class<T> baseType) {
+	public GsonTranscoder(GsonBuilder gsonBuilder, Type baseType) {
 		this.gson = gsonBuilder.create();
 		this.baseType = baseType;
 	}

@@ -6,9 +6,12 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Vector;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+
+import net.spy.memcached.MemcachedClientIF;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -24,40 +27,29 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 
-import com.uhaapi.server.cache.Cache;
-
 public abstract class MapsService {
-	private static final String SIGNING_ALGORITHM = "HmacSHA1";
+	private static final String NS_MAPS = DigestUtils.md5Hex("GoogleMaps");
+
+	protected static final ExecutorService threadPool = Executors.newCachedThreadPool();
+
+	public static final String SIGNING_ALGORITHM = "HmacSHA1";
 
 	private HttpClient httpClient;
 	private Logger log = Logger.getLogger(getClass());
 
-	private String apiKey = null;
-
-	private String clientId = null;
-	private SecretKeySpec clientKey = null;
+	private final MapsCredentials credentials;
 
 	private boolean sensor = false;
 
-	private Cache<String, String> cache = null;
+	private MemcachedClientIF memcached = null;
 
 	private ThreadLocal<Mac> threadMac = new ThreadLocal<Mac>();
 
-	private MapsService(Cache<String, String> cache) {
-		this.cache = cache;
+	protected MapsService(MemcachedClientIF memcached, MapsCredentials credentials) {
+		this.memcached = memcached;
+		this.credentials = credentials;
+
 		this.httpClient = new DefaultHttpClient();
-	}
-
-	protected MapsService(Cache<String, String> cache, String apiKey) {
-		this(cache);
-
-		this.apiKey = apiKey;
-	}
-	protected MapsService(Cache<String, String> cache, String clientId, String clientKey) {
-		this(cache);
-
-		this.clientId = clientId;
-		this.clientKey = new SecretKeySpec(Base64.decodeBase64(clientKey), SIGNING_ALGORITHM);
 	}
 
 	public void setSensor(boolean sensor) {
@@ -71,11 +63,13 @@ public abstract class MapsService {
 		List<NameValuePair> params = new Vector<NameValuePair>(queryString);
 
 		params.add(new BasicNameValuePair("sensor", Boolean.toString(sensor)));
-		if(clientId == null) {
-			params.add(new BasicNameValuePair("key", apiKey));
+		if(credentials.getClientKey() == null) {
+			if(credentials.getClientId() != null) {
+				params.add(new BasicNameValuePair("key", credentials.getClientId()));
+			}
 		}
 		else {
-			params.add(new BasicNameValuePair("client", clientId));
+			params.add(new BasicNameValuePair("client", credentials.getClientId()));
 			params.add(
 					new BasicNameValuePair(
 							"signature",
@@ -88,8 +82,9 @@ public abstract class MapsService {
 		try {
 			String key = null;
 			URI uri = generateURI(path, params);
-			if(cache != null) {
-				key = DigestUtils.md5Hex(uri.getPath() + "?" + uri.getQuery());
+			if(memcached != null) {
+				key = NS_MAPS + DigestUtils.md5Hex(uri.getPath() + "?" + uri.getQuery());
+				result = (String)memcached.get(key);
 			}
 			if(result == null) {
 				HttpGet get = new HttpGet(uri);
@@ -98,8 +93,8 @@ public abstract class MapsService {
 
 				result = IOUtils.toString(entity.getContent());
 
-				if(cache != null) {
-					cache.put(key, result, 2592000);
+				if(memcached != null) {
+					memcached.set(key, 2592000, result);
 				}
 			}
 		}
@@ -139,7 +134,7 @@ public abstract class MapsService {
 		Mac mac = threadMac.get();
 		if(mac == null) {
 			threadMac.set(mac = Mac.getInstance(SIGNING_ALGORITHM));
-			mac.init(clientKey);
+			mac.init(credentials.getClientKey());
 		}
 		return mac;
 	}

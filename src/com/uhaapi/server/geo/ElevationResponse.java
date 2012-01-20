@@ -9,4 +9,11 @@ public class ElevationResponse extends MapsResponse {
 	public Iterator<ElevationResult> resultsIterator() {
 		return results.iterator();
 	}
+
+	public ElevationResult getFirstResult() {
+		if(results.size() > 0) {
+			return results.get(0);
+		}
+		return null;
+	}
 }
