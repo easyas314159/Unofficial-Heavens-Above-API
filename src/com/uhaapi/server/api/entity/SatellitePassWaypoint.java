@@ -6,14 +6,19 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 
+import com.google.gson.annotations.Expose;
+
 @XmlAccessorType(XmlAccessType.NONE)
 public class SatellitePassWaypoint {
+	@Expose
 	@XmlElement
 	private Date time = null;
 
+	@Expose
 	@XmlElement
 	private Double alt = null;
 
+	@Expose
 	@XmlElement
 	private Double az = null;
 

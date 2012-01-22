@@ -10,10 +10,4 @@ public final class ServletInitOptions {
 
 	public static final String MAPS_CLIENT_ID = "maps.client_id";
 	public static final String MAPS_CLIENT_KEY = "maps.client_key";
-
-	public static final String PACHUBE_API_KEY = "pachube.api_key";
-	public static final String PACHUBE_FEED_ID = "pachube.feed_id";
-	
-	public static final String PACHUBE_METRIC_REQUEST_RATE = "pachube.metric.request_rate";
-	public static final String PACHUBE_METRIC_AVERAGE_REQUEST_TIME = "pachube.metric.average_request_time";
 }

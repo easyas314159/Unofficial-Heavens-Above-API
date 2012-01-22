@@ -8,8 +8,8 @@ public class WhitespaceFilter implements NodeFilter {
 	@Override
 	public boolean accept(Node node) {
 		if(node instanceof TextNode) {
-			return ((TextNode)node).isWhiteSpace();
+			return !((TextNode)node).isWhiteSpace();
 		}
-		return false;
+		return true;
 	}
 }

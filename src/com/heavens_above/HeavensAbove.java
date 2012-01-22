@@ -1,7 +1,6 @@
-package com.uhaapi.server.util;
+package com.heavens_above;
 
 import java.io.IOException;
-import java.net.URI;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -12,28 +11,19 @@ import java.util.List;
 import java.util.Vector;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.utils.URIUtils;
-import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 import org.htmlparser.Node;
 import org.htmlparser.NodeFilter;
-import org.htmlparser.Parser;
 import org.htmlparser.Text;
 import org.htmlparser.filters.AndFilter;
 import org.htmlparser.filters.CssSelectorNodeFilter;
 import org.htmlparser.filters.HasAttributeFilter;
 import org.htmlparser.filters.HasParentFilter;
 import org.htmlparser.filters.NotFilter;
-import org.htmlparser.filters.RegexFilter;
-import org.htmlparser.lexer.Lexer;
-import org.htmlparser.lexer.Page;
 import org.htmlparser.util.NodeList;
 import org.htmlparser.visitors.NodeVisitor;
 
@@ -43,31 +33,50 @@ import com.uhaapi.server.api.entity.SatellitePass;
 import com.uhaapi.server.api.entity.SatellitePassWaypoint;
 import com.uhaapi.server.api.entity.SatellitePasses;
 import com.uhaapi.server.geo.LatLng;
+import com.uhaapi.server.http.HttpScraper;
+import com.uhaapi.server.util.ParamUtils;
 
 public class HeavensAbove {
 	private final Logger log = Logger.getLogger(getClass());
 
-	private final String userAgent;
 	private final HttpClient httpClient;
 
 	public HeavensAbove() {
-		this(null);
+		this(new DefaultHttpClient());
 	}
 
-	public HeavensAbove(String userAgent) {
-		this.userAgent = userAgent;
-		this.httpClient = new DefaultHttpClient();
+	public HeavensAbove(HttpClient httpClient) {
+		this.httpClient = httpClient;
 	}
 
 	public Satellite getSatellite(int id) throws IOException {
-		Satellite result = new Satellite();
+		Satellite satellite = new Satellite();
 
 		List<NameValuePair> params = new Vector<NameValuePair>();
 		params.add(new BasicNameValuePair("SatID", Integer.toString(id)));
 
 		NodeList page = getPage("satinfo.aspx", params);
 
-		return result;
+		satellite.setId(id);
+		extractSatelliteDetails(page, satellite);
+
+		return satellite;
+	}
+
+	private void extractSatelliteDetails(NodeList page, Satellite satellite) {
+		NodeList working = null;
+
+		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_lblTitle"));
+		String name = working.asString();
+		int idx = name.lastIndexOf('-');
+		if(idx > 0) {
+			satellite.setName(StringUtils.trimToNull(name.substring(0, idx)));
+		}
+		
+		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_ContentPlaceHolder1_lblIntDesig"));
+		satellite.setIdc(StringUtils.trimToNull(working.asString()));
+
+		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_ContentPlaceHolder1_lblLaunchDate"));
 	}
 
 	public SatellitePasses getVisiblePasses(int id, double lat, double lng,
@@ -86,57 +95,14 @@ public class HeavensAbove {
 		response.setAltitude(alt);
 		response.setLocation(new LatLng(lat, lng));
 
-		extractDetails(page, response);
+		extractTimeDetails(page, response);
 		extractAllPasses(page, response);
 
 		return response;
 	}
 
-	private NodeList getPage(String path, List<NameValuePair> params) {
-		try {
-			URI uri = URIUtils.createURI("http", "heavens-above.com", -1, path,
-					URLEncodedUtils.format(params, "UTF-8"), null);
-
-			HttpGet get = new HttpGet(uri);
-			if(userAgent != null) {
-				get.setHeader("User-Agent", userAgent);
-			}
-			HttpResponse rsp = httpClient.execute(get);
-
-			if(rsp.getStatusLine().getStatusCode() != 200) {
-				return null;
-			}
-
-			HttpEntity entity = rsp.getEntity();
-
-			Parser parser = threadLocalParser.getInstance();
-			Lexer lexer = new Lexer(new Page(entity.getContent(), "UTF-8"));
-			parser.setLexer(lexer);
-
-			NodeList result = parser.parse(null);
-			result.keepAllNodesThatMatch(new NotFilter(new RegexFilter(
-					"^\\s*$", RegexFilter.MATCH)), true);
-			return result;
-		} catch(Exception ex) {
-			return null;
-		}
-	}
-
-	private ThreadLocalInstanceFactory<Parser> threadLocalParser = new ThreadLocalInstanceFactory<Parser>() {
-		@Override
-		protected Parser instantiate() {
-			return new Parser();
-		}
-
-		@Override
-		protected Parser configure(Parser o) {
-			o.reset();
-			return o;
-		};
-	};
-
-	private SatellitePasses extractDetails(NodeList page,
-			SatellitePasses response) {
+	private void extractTimeDetails(NodeList page,
+			SatellitePasses passes) {
 		DateFormat searchRangeFormat = new SimpleDateFormat(
 				"HH:mm EEEE, d MMMM, yyyy");
 		NodeList working = null;
@@ -148,7 +114,7 @@ public class HeavensAbove {
 						"ctl00_ContentPlaceHolder1_lblSearchStart")), true);
 		try {
 			searchStart = searchRangeFormat.parse(working.asString());
-			response.setFrom(searchStart);
+			passes.setFrom(searchStart);
 		} catch(ParseException ex) {
 			log.warn("Failed to parse start time", ex);
 		}
@@ -159,12 +125,10 @@ public class HeavensAbove {
 						"ctl00_ContentPlaceHolder1_lblSearchEnd")), true);
 		try {
 			searchEnd = searchRangeFormat.parse(working.asString());
-			response.setTo(searchEnd);
+			passes.setTo(searchEnd);
 		} catch(ParseException ex) {
 			log.warn("Failed to parse end time", ex);
 		}
-
-		return response;
 	}
 
 	private void extractAllPasses(NodeList page, SatellitePasses response) {
@@ -245,5 +209,13 @@ public class HeavensAbove {
 
 	private Double convertCompassPoint(String name) {
 		return Compass.valueOf(name).getAzimuth();
+	}
+
+	private NodeList getPage(String path, List<NameValuePair> params) {
+		try {
+			return HttpScraper.scrape(httpClient, "heavens-above.com", -1, path, params);
+		} catch(Exception ex) {
+			return null;
+		}
 	}
 }

@@ -1,21 +1,21 @@
 package com.uhaapi.server.modules;
 
+import org.apache.http.client.HttpClient;
+
 import com.google.inject.Inject;
 import com.google.inject.Provider;
-import com.google.inject.name.Named;
-import com.uhaapi.server.ServletInitOptions;
-import com.uhaapi.server.util.HeavensAbove;
+import com.heavens_above.HeavensAbove;
 
 public class HeavensAboveProvider implements Provider<HeavensAbove> {
-	private final String userAgent;
+	private final HttpClient httpClient;
 
 	@Inject
-	public HeavensAboveProvider(@Named(ServletInitOptions.APP_USER_AGENT) String userAgent) {
-		this.userAgent = userAgent;
+	public HeavensAboveProvider(HttpClient httpClient) {
+		this.httpClient = httpClient;
 	}
 
 	@Override
 	public HeavensAbove get() {
-		return new HeavensAbove(userAgent);
+		return new HeavensAbove(httpClient);
 	}
 }

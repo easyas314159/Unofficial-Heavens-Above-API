@@ -11,20 +11,16 @@ import net.spy.memcached.MemcachedClientIF;
 
 import org.apache.log4j.Logger;
 
-import Pachube.Pachube;
-
-import com.google.inject.Singleton;
 import com.google.inject.name.Names;
+import com.heavens_above.HeavensAbove;
 import com.sun.jersey.api.core.PackagesResourceConfig;
 import com.sun.jersey.guice.JerseyServletModule;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
 import com.uhaapi.server.LoadFilter;
 import com.uhaapi.server.MemcachedListener;
 import com.uhaapi.server.ServletInitOptions;
+import com.uhaapi.server.ThreadPoolListener;
 import com.uhaapi.server.geo.MapsCredentials;
-import com.uhaapi.server.metrics.MetricAverageRequestTime;
-import com.uhaapi.server.metrics.MetricRequestRate;
-import com.uhaapi.server.util.HeavensAbove;
 
 public class CoreModule extends JerseyServletModule {
 	private final Logger log = Logger.getLogger(getClass());
@@ -41,22 +37,18 @@ public class CoreModule extends JerseyServletModule {
 			configureInitParameters(context);
 
 			bind(MemcachedClientIF.class)
-				.toProvider(MemcachedClientIFProvider.class);
+				.toProvider(new ContextAttributeProvider<MemcachedClientIF>(context, MemcachedListener.MEMCACHED));
 			bind(ScheduledExecutorService.class)
-				.toProvider(ScheduledExecutorServiceProvider.class);
+				.toProvider(new ContextAttributeProvider<ScheduledExecutorService>(context, ThreadPoolListener.THREAD_POOL));
 			bind(ExecutorService.class)
 				.to(ScheduledExecutorService.class);
-
-
+			
 			bind(MapsCredentials.class)
 				.toProvider(MapsCredentialsProvider.class)
-				.in(Singleton.class);
+				.asEagerSingleton();
 			bind(HeavensAbove.class)
 				.toProvider(HeavensAboveProvider.class)
-				.in(Singleton.class);
-			bind(Pachube.class)
-				.toProvider(PachubeProvider.class)
-				.in(Singleton.class);
+				.asEagerSingleton();
 
 			Map<String, String> params = new HashMap<String, String>();
             params.put(
@@ -94,25 +86,6 @@ public class CoreModule extends JerseyServletModule {
 		bind(String.class)
 			.annotatedWith(Names.named(ServletInitOptions.MAPS_CLIENT_KEY))
 			.toProvider(new StringProvider(ctx, ServletInitOptions.MAPS_CLIENT_KEY, null))
-			.asEagerSingleton();
-
-		// Pachube API
-		bind(String.class)
-			.annotatedWith(Names.named(ServletInitOptions.PACHUBE_API_KEY))
-			.toProvider(new StringProvider(ctx, ServletInitOptions.PACHUBE_API_KEY, null))
-			.asEagerSingleton();
-		bind(Integer.class)
-			.annotatedWith(Names.named(ServletInitOptions.PACHUBE_FEED_ID))
-			.toProvider(new IntegerProvider(ctx, ServletInitOptions.PACHUBE_FEED_ID, null))
-			.asEagerSingleton();
-
-		bind(Integer.class)
-			.annotatedWith(MetricRequestRate.class)
-			.toProvider(new IntegerProvider(ctx, ServletInitOptions.PACHUBE_METRIC_REQUEST_RATE, null))
-			.asEagerSingleton();
-		bind(Integer.class)
-			.annotatedWith(MetricAverageRequestTime.class)
-			.toProvider(new IntegerProvider(ctx, ServletInitOptions.PACHUBE_METRIC_AVERAGE_REQUEST_TIME, null))
 			.asEagerSingleton();
 	}
 }

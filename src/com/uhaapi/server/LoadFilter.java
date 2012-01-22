@@ -7,7 +7,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import javax.annotation.Nullable;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -17,12 +16,8 @@ import javax.servlet.ServletResponse;
 
 import org.apache.log4j.Logger;
 
-import Pachube.Feed;
-
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.uhaapi.server.metrics.MetricAverageRequestTime;
-import com.uhaapi.server.metrics.MetricRequestRate;
 
 @Singleton
 public class LoadFilter implements Runnable, Filter {
@@ -31,22 +26,11 @@ public class LoadFilter implements Runnable, Filter {
 	private final AtomicLong requestTime;
 	private final AtomicLong requestCounter;
 
-	private final Feed statusFeed;
-
-	private Integer streamRequestRate = null;
-	private Integer streamAvgRequestTime = null;
-
 	private ScheduledFuture<?> future = null;
 	private ScheduledExecutorService executor = null;
 
 	@Inject
-	public LoadFilter(
-			@Nullable Feed statusFeed,
-			@MetricRequestRate @Nullable Integer requestRateId,
-			@MetricAverageRequestTime @Nullable Integer avgRequestTimeId
-		) {
-		this.statusFeed = statusFeed;
-
+	public LoadFilter() {
 		requestTime = new AtomicLong();
 		requestCounter = new AtomicLong();
 
@@ -98,15 +82,6 @@ public class LoadFilter implements Runnable, Filter {
 
 		if(requests > 0L) {
 			average = average / requests;
-		}
-
-		if(statusFeed != null) {
-			if(streamRequestRate != null) {
-				statusFeed.updateDatastream(streamRequestRate, requests.doubleValue());
-			}
-			if(streamAvgRequestTime != null) {
-				statusFeed.updateDatastream(streamAvgRequestTime, average.doubleValue());
-			}
 		}
 	}
 }

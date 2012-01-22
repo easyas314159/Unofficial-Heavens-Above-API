@@ -2,7 +2,6 @@ package com.uhaapi.server;
 
 import java.util.TimeZone;
 
-import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
@@ -14,10 +13,9 @@ public class Configurator implements ServletContextListener {
 	public static final String MEMCAHED = "memcached";
 	public static final String ELEVATION_SERVICE = "elevation_service";
 
+	@Override
 	public void contextInitialized(ServletContextEvent event) {
 		try {
-			ServletContext context = event.getServletContext();
-
 			TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 		}
 		catch(Throwable t) {
@@ -25,6 +23,7 @@ public class Configurator implements ServletContextListener {
 		}
 	}
 
+	@Override
 	public void contextDestroyed(ServletContextEvent eventt) {
 	}
 }

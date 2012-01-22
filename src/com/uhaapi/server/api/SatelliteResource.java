@@ -22,10 +22,11 @@ import net.spy.memcached.MemcachedClientIF;
 import net.spy.memcached.transcoders.Transcoder;
 
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.log4j.Logger;
+import org.apache.http.HttpStatus;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import com.heavens_above.HeavensAbove;
 import com.uhaapi.server.ServletInitOptions;
 import com.uhaapi.server.api.entity.Satellite;
 import com.uhaapi.server.api.entity.SatellitePass;
@@ -34,7 +35,6 @@ import com.uhaapi.server.cache.GsonTranscoder;
 import com.uhaapi.server.geo.ElevationResponse;
 import com.uhaapi.server.geo.ElevationService;
 import com.uhaapi.server.geo.LatLng;
-import com.uhaapi.server.util.HeavensAbove;
 
 @Path("satellites")
 @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
@@ -58,8 +58,6 @@ public class SatelliteResource {
 		}); 
 	}
 
-	private final Logger log = Logger.getLogger(getClass());
-
 	private final String NS_SATELLITES = DigestUtils.md5Hex("satellites");
 	private final String NS_PASSES = DigestUtils.md5Hex("satellites/passes");
 
@@ -79,12 +77,13 @@ public class SatelliteResource {
 		this.memcached = memcached;
 		this.elevationService = elevationService;
 		this.heavensScraper = heavensScraper;
+
 		this.precisionDenominator = precisionDenominator;
 	}
 
 	@GET
 	public Response getStatus() {
-		return Response.ok().build();
+		return Response.status(HttpStatus.SC_NO_CONTENT).build();
 	}
 
 	@GET
@@ -124,7 +123,8 @@ public class SatelliteResource {
 	public Response getSatellitePasses(
 			@PathParam("id") Integer id,
 			@QueryParam("lat") @DefaultValue("0") Double lat,
-			@QueryParam("lng") @DefaultValue("0") Double lng
+			@QueryParam("lng") @DefaultValue("0") Double lng,
+			@QueryParam("lm") Double lm
 		) {
 		String key = null;
 
@@ -199,7 +199,9 @@ public class SatelliteResource {
     	List<SatellitePass> releventPasses = new ArrayList<SatellitePass>();
     	for(SatellitePass pass : allPasses){
     		if(pass.getStart().getTime().before(response.getTo())
-    			&& pass.getEnd().getTime().after(response.getFrom())) {
+    				&& pass.getEnd().getTime().after(response.getFrom())
+    				&& (lm == null || lm <= pass.getMagnitude())
+    			) {
     			releventPasses.add(pass);
     		}
     	}
@@ -216,5 +218,12 @@ public class SatelliteResource {
     	}
 
 		return Response.ok(response).build();
+	}
+
+	@GET
+	@Path("{id}/tle")
+	@Produces({MediaType.TEXT_PLAIN})
+	public Response getSatelliteTLE(@PathParam("id") String id) {
+		return Response.status(HttpStatus.SC_NOT_FOUND).build();
 	}
 }

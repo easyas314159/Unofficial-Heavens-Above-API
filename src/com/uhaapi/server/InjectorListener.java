@@ -15,7 +15,7 @@ import com.google.inject.Stage;
 
 public class InjectorListener implements ServletContextListener {
 	public static final String INJECTOR = Injector.class.getName();
-	
+
 	private final Logger log = Logger.getLogger(getClass());
 
 	@Override
@@ -36,7 +36,7 @@ public class InjectorListener implements ServletContextListener {
 		//Injector injector = (Injector)ctx.getAttribute(INJECTOR);
 		ctx.removeAttribute(INJECTOR);
 	}
-	
+
 	private Injector getInjector(ServletContext context) {
 		Stage stage = (Stage)context.getAttribute(ModuleListener.STAGE);
 		Collection<Module> modules = (Collection<Module>)context.getAttribute(ModuleListener.MODULES);

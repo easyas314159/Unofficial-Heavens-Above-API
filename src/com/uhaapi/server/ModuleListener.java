@@ -11,6 +11,7 @@ import com.google.inject.Module;
 import com.google.inject.Stage;
 import com.uhaapi.server.modules.CoreModule;
 import com.uhaapi.server.modules.GsonModule;
+import com.uhaapi.server.modules.HttpModule;
 import com.uhaapi.server.modules.MapsServicesModule;
 import com.uhaapi.server.util.ParamUtils;
 
@@ -32,6 +33,7 @@ public class ModuleListener implements ServletContextListener {
 			add(new CoreModule(ctx));
 			add(new GsonModule());
 			add(new MapsServicesModule());
+			add(new HttpModule());
 		}};
 
 		ctx.setAttribute(STAGE, stage);

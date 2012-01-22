@@ -46,10 +46,13 @@ public abstract class MapsService {
 	private ThreadLocal<Mac> threadMac = new ThreadLocal<Mac>();
 
 	protected MapsService(MemcachedClientIF memcached, MapsCredentials credentials) {
+		this(null, memcached, credentials);
+	}
+	protected MapsService(HttpClient httpClient, MemcachedClientIF memcached, MapsCredentials credentials) {
 		this.memcached = memcached;
 		this.credentials = credentials;
 
-		this.httpClient = new DefaultHttpClient();
+		this.httpClient = httpClient == null ? new DefaultHttpClient() : httpClient;
 	}
 
 	public void setSensor(boolean sensor) {
