@@ -16,6 +16,8 @@ public class GsonModule extends AbstractModule {
 			.setPrettyPrinting()
 			;
 
+		// TODO: Create a provider for GSON builders so we can inject things like pretty printing
+		
 		bind(GsonBuilder.class)
 			.toInstance(gsonBuilder);
 		bind(Gson.class)

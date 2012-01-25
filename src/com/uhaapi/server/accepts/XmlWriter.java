@@ -15,9 +15,17 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 
+import com.google.inject.Inject;
+
 @Provider
 @Produces({MediaType.APPLICATION_XML})
 public class XmlWriter implements MessageBodyWriter<Object> {
+	private final boolean prettyPrinting;
+
+	@Inject
+	public XmlWriter(@PrettyPrinting boolean prettyPrinting) {
+		this.prettyPrinting = prettyPrinting;
+	}
 
 	@Override
 	public long getSize(Object response, Class<?> clazz, Type type, Annotation[] a, MediaType mediaType) {
@@ -39,7 +47,7 @@ public class XmlWriter implements MessageBodyWriter<Object> {
 			JAXBContext context = JAXBContext.newInstance(clazz);
 
 		    Marshaller m = context.createMarshaller();
-		    m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+		    m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, prettyPrinting);
 
 		    m.marshal(response, output);
 		}

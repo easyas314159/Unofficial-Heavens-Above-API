@@ -20,6 +20,7 @@ import com.uhaapi.server.LoadFilter;
 import com.uhaapi.server.MemcachedListener;
 import com.uhaapi.server.ServletInitOptions;
 import com.uhaapi.server.ThreadPoolListener;
+import com.uhaapi.server.accepts.PrettyPrinting;
 import com.uhaapi.server.geo.MapsCredentials;
 
 public class CoreModule extends JerseyServletModule {
@@ -68,6 +69,11 @@ public class CoreModule extends JerseyServletModule {
 	}
 
 	private void configureInitParameters(ServletContext ctx) {
+		bind(Boolean.class)
+			.annotatedWith(PrettyPrinting.class)
+			.toProvider(new BooleanProvider(ctx, ServletInitOptions.APP_PRETTY_PRINTING, Boolean.FALSE))
+			.asEagerSingleton();
+
 		bind(String.class)
 			.annotatedWith(Names.named(ServletInitOptions.APP_USER_AGENT))
 			.toProvider(new StringProvider(ctx, ServletInitOptions.APP_USER_AGENT, "Unoffical Heavens Above API (uhaapi.com)"))
