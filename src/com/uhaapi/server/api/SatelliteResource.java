@@ -1,11 +1,8 @@
 package com.uhaapi.server.api;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Future;
 
@@ -15,6 +12,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.CacheControl;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -22,6 +20,7 @@ import net.spy.memcached.MemcachedClientIF;
 import net.spy.memcached.transcoders.Transcoder;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.http.HttpHeaders;
 import org.apache.http.HttpStatus;
 
 import com.google.inject.Inject;
@@ -39,24 +38,8 @@ import com.uhaapi.server.geo.LatLng;
 @Path("satellites")
 @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
 public class SatelliteResource {
-	private static final GsonTranscoder<List<SatellitePass>> transcoderPasses;
-
-	static {
-		transcoderPasses = new GsonTranscoder<List<SatellitePass>>(new ParameterizedType() {
-			@Override
-			public Type getRawType() {
-				return List.class;
-			}
-			@Override
-			public Type getOwnerType() {
-				return Collection.class;
-			}
-			@Override
-			public Type[] getActualTypeArguments() {
-				return new Type[]{SatellitePass.class};
-			}
-		}); 
-	}
+	private static final GsonTranscoder<SatellitePasses> transcoderPasses
+		= new GsonTranscoder<SatellitePasses>(SatellitePasses.class);
 
 	private final String NS_SATELLITES = DigestUtils.md5Hex("satellites");
 	private final String NS_PASSES = DigestUtils.md5Hex("satellites/passes");
@@ -128,13 +111,18 @@ public class SatelliteResource {
 		) {
 		String key = null;
 
+		Date now = new Date();
+		Calendar cal = Calendar.getInstance();
+
 		long latid = Math.round(precisionDenominator * lat);
     	long lngid = Math.round(precisionDenominator * lng);
 
-    	Future<List<SatellitePass>> futureAllPasses = null;
+    	String etag = DigestUtils.md5Hex(String.format("%s:%d:%d", id, latid, lngid));
+
+    	Future<SatellitePasses> asyncCachedPasses = null;
     	if(memcached != null) {
-	    	key = NS_PASSES + DigestUtils.md5Hex(String.format("%s:%d:%d", id, latid, lngid));
-	    	futureAllPasses = memcached.asyncGet(key, transcoderPasses);
+	    	key = NS_PASSES + etag;
+	    	asyncCachedPasses = memcached.asyncGet(key, transcoderPasses);
     	}
 
     	lat = ((double)latid) / precisionDenominator;
@@ -148,16 +136,16 @@ public class SatelliteResource {
     	response.setId(id);
     	response.setLocation(new LatLng(lat, lng));
 
-    	List<SatellitePass> allPasses = null;
-    	if(futureAllPasses != null) {
+    	SatellitePasses cachedPasses = null;
+    	if(asyncCachedPasses != null) {
 	    	try {
-	    		allPasses = futureAllPasses.get();
+	    		cachedPasses = asyncCachedPasses.get();
 	    	}
 	    	catch(Exception ex) {}
     	}
 
     	try {
-	    	if(allPasses == null) {
+	    	if(cachedPasses == null) {
 	    		double alt = 0.0;
 
 	    		ElevationResponse elevation = futureElevation.get();
@@ -165,47 +153,53 @@ public class SatelliteResource {
 	    			alt = elevation.getFirstResult().getElevation();
 	    		}
 
-	    		// TODO: Load/Parse passes
-	    		SatellitePasses passResponse = heavensScraper.getVisiblePasses(id, lat, lng, alt);
-	    		if(passResponse == null) {
-	    			allPasses = Collections.EMPTY_LIST;
-	    		}
-	    		else {
-	    			allPasses = passResponse.getResults();
-	    		}
+	    		cachedPasses = heavensScraper.getVisiblePasses(id, lat, lng, alt);
 
 	    		if(memcached != null) {
 	    			int expires = 0;
-	    			if(passResponse != null && passResponse.inOrbit()) {
-	    				Calendar cal = Calendar.getInstance();
-	    	        	cal.setTime(passResponse.getTo());
+	    			if(cachedPasses != null) {
+	    	        	cal.setTime(cachedPasses.getTo());
 	    	        	cal.add(Calendar.DAY_OF_MONTH, -1);
 
 	    				expires = (int)(cal.getTimeInMillis() / 1000);
 	    			}
-    				memcached.set(key, expires, allPasses, transcoderPasses);
+    				memcached.set(key, expires, cachedPasses, transcoderPasses);
 	    		}
 	    	}
     	}
     	catch(Exception ex) {
-    		allPasses = Collections.EMPTY_LIST;
+    		return Response.serverError().build();
     	}
 
-    	Calendar cal = Calendar.getInstance();
-    	response.setFrom(cal.getTime());
+    	cal.setTime(now);
     	cal.add(Calendar.DAY_OF_MONTH, 1);
     	response.setTo(cal.getTime());
 
+    	Date nextPass = cachedPasses.getTo();
     	List<SatellitePass> releventPasses = new ArrayList<SatellitePass>();
-    	for(SatellitePass pass : allPasses){
-    		if(pass.getStart().getTime().before(response.getTo())
-    				&& pass.getEnd().getTime().after(response.getFrom())
-    				&& (lm == null || lm <= pass.getMagnitude())
-    			) {
-    			releventPasses.add(pass);
+    	for(SatellitePass pass : cachedPasses.getResults()){
+    		if(pass.getEnd().getTime().after(now)) {
+    			if(pass.getStart().getTime().before(response.getTo())
+    					&& (lm == null || pass.getMagnitude() <= lm)
+    				) {
+    				releventPasses.add(pass);
+    			}
+    			else if(pass.getStart().getTime().before(nextPass)) {
+    				nextPass = pass.getStart().getTime();
+    			}
     		}
     	}
     	response.setResults(releventPasses);
+
+    	cal.setTime(nextPass);
+    	cal.add(Calendar.DAY_OF_MONTH, -1);
+    	Date expires = cal.getTime();
+
+    	CacheControl cache = new CacheControl();
+    	cache.setMaxAge(1 + (int)(expires.getTime() - now.getTime()) / 1000);
+
+    	response.setFrom(now);
+    	response.setTo(nextPass);
 
     	try {
     		ElevationResponse elevation = futureElevation.get();
@@ -217,7 +211,11 @@ public class SatelliteResource {
     		response.setAltitude(0.0);
     	}
 
-		return Response.ok(response).build();
+		return Response.ok(response)
+			.header(HttpHeaders.ETAG, etag)
+			.header(HttpHeaders.EXPIRES, expires)
+			.cacheControl(cache)
+			.build();
 	}
 
 	@GET

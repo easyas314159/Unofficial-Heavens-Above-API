@@ -59,7 +59,8 @@ public final class HttpScraper {
 		Lexer lexer = new Lexer(new Page(entity.getContent(), charset));
 		parser.setLexer(lexer);
 
-		NodeList nodes = parser.parse(new WhitespaceFilter());
+		NodeList nodes = parser.parse(null);
+		nodes.keepAllNodesThatMatch(new WhitespaceFilter(), true);
 		return nodes;
 	}
 }
