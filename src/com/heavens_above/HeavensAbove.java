@@ -50,14 +50,18 @@ public class HeavensAbove {
 	}
 
 	public Satellite getSatellite(int id) throws IOException {
-		Satellite satellite = new Satellite();
 
 		List<NameValuePair> params = new Vector<NameValuePair>();
 		params.add(new BasicNameValuePair("SatID", Integer.toString(id)));
 
 		NodeList page = getPage("satinfo.aspx", params);
+		if(page == null) {
+			return null;
+		}
 
+		Satellite satellite = new Satellite();
 		satellite.setId(id);
+
 		extractSatelliteDetails(page, satellite);
 
 		return satellite;
@@ -89,6 +93,10 @@ public class HeavensAbove {
 		params.add(new BasicNameValuePair("tz", "UCT"));
 
 		NodeList page = getPage("PassSummary.aspx", params);
+		if(page == null) {
+			return null;
+		}
+
 		SatellitePasses response = new SatellitePasses();
 
 		response.setId(id);

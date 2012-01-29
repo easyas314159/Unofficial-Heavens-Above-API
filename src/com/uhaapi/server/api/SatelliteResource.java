@@ -13,8 +13,11 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.CacheControl;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.EntityTag;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 
 import net.spy.memcached.MemcachedClientIF;
 import net.spy.memcached.transcoders.Transcoder;
@@ -72,11 +75,12 @@ public class SatelliteResource {
 	@GET
 	@Path("{id}")
 	public Response getSatellite(
-			@PathParam("id") Integer id
+			@PathParam("id") Integer id,
+			@Context UriInfo ui
 		) {
 
 		Transcoder<Satellite> tSat = null;
-		
+
 		String key = null;
 		Satellite response = null;
 		if(memcached != null) {
@@ -97,6 +101,8 @@ public class SatelliteResource {
 		catch(Exception ex) {
 			return Response.serverError().build();
 		}
+
+		// TODO: Attach link headers for pass and tle data
 
 		return Response.ok(response).build();
 	}
@@ -168,9 +174,14 @@ public class SatelliteResource {
 	    	}
     	}
     	catch(Exception ex) {
+    		ex.printStackTrace(System.err);
     		return Response.serverError().build();
     	}
 
+    	if(cachedPasses == null) {
+    		return Response.status(HttpStatus.SC_NOT_FOUND).build();
+    	}
+    	
     	cal.setTime(now);
     	cal.add(Calendar.DAY_OF_MONTH, 1);
     	response.setTo(cal.getTime());
@@ -196,7 +207,11 @@ public class SatelliteResource {
     	Date expires = cal.getTime();
 
     	CacheControl cache = new CacheControl();
-    	cache.setMaxAge(1 + (int)(expires.getTime() - now.getTime()) / 1000);
+
+    	cache.setMustRevalidate(true);
+    	cache.setMaxAge((int)(expires.getTime() - now.getTime()) / 1000);
+    	
+    	EntityTag tag = new EntityTag(etag);
 
     	response.setFrom(now);
     	response.setTo(nextPass);
@@ -212,9 +227,9 @@ public class SatelliteResource {
     	}
 
 		return Response.ok(response)
-			.header(HttpHeaders.ETAG, etag)
 			.header(HttpHeaders.EXPIRES, expires)
 			.cacheControl(cache)
+			.tag(tag)
 			.build();
 	}
 
