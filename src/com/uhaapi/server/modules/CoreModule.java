@@ -16,6 +16,7 @@ import com.heavens_above.HeavensAbove;
 import com.sun.jersey.api.core.PackagesResourceConfig;
 import com.sun.jersey.guice.JerseyServletModule;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
+import com.uhaapi.server.ErrorFilter;
 import com.uhaapi.server.LoadFilter;
 import com.uhaapi.server.MemcachedListener;
 import com.uhaapi.server.ServletInitOptions;
@@ -57,8 +58,8 @@ public class CoreModule extends JerseyServletModule {
             		"com.uhaapi.server;"
             	);
 
-            filter("/*")
-            	.through(LoadFilter.class);
+            filter("/*").through(LoadFilter.class);
+            filter("/*").through(ErrorFilter.class);
 
             serve("/*")
             	.with(GuiceContainer.class, params);
