@@ -14,7 +14,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.CacheControl;
 import javax.ws.rs.core.Context;
-import javax.ws.rs.core.EntityTag;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
@@ -23,8 +22,12 @@ import net.spy.memcached.MemcachedClientIF;
 import net.spy.memcached.transcoders.Transcoder;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpStatus;
+import org.apache.http.NameValuePair;
+import org.apache.http.message.BasicHeaderElement;
+import org.apache.http.message.BasicNameValuePair;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -69,7 +72,7 @@ public class SatelliteResource {
 
 	@GET
 	public Response getStatus() {
-		return Response.status(HttpStatus.SC_NO_CONTENT).build();
+		return Response.ok().build();
 	}
 
 	@GET
@@ -102,9 +105,24 @@ public class SatelliteResource {
 			return Response.serverError().build();
 		}
 
-		// TODO: Attach link headers for pass and tle data
+		if(response == null) {
+			return Response.status(HttpStatus.SC_NOT_FOUND).build();
+		}
 
-		return Response.ok(response).build();
+		BasicNameValuePair rel, title;
+
+		rel = new BasicNameValuePair("rel", "passes");
+		title = new BasicNameValuePair("title", "Visible pass in the next 24-hours");
+		BasicHeaderElement linkPasses = new BasicHeaderElement("<passes>", null, new NameValuePair[]{rel, title});
+
+		rel = new BasicNameValuePair("rel", "tle");
+		title = new BasicNameValuePair("title", "Most recent two line element");
+		BasicHeaderElement linkTLE = new BasicHeaderElement("<tle>", null, new NameValuePair[]{rel});
+		
+		return Response
+				.ok(response)
+				.header("Link", StringUtils.join(new Object[]{linkPasses, linkTLE}, ","))
+				.build();
 	}
 
 	@GET
@@ -174,14 +192,13 @@ public class SatelliteResource {
 	    	}
     	}
     	catch(Exception ex) {
-    		ex.printStackTrace(System.err);
     		return Response.serverError().build();
     	}
 
     	if(cachedPasses == null) {
     		return Response.status(HttpStatus.SC_NOT_FOUND).build();
     	}
-    	
+
     	cal.setTime(now);
     	cal.add(Calendar.DAY_OF_MONTH, 1);
     	response.setTo(cal.getTime());
@@ -208,10 +225,9 @@ public class SatelliteResource {
 
     	CacheControl cache = new CacheControl();
 
-    	cache.setMustRevalidate(true);
     	cache.setMaxAge((int)(expires.getTime() - now.getTime()) / 1000);
-    	
-    	EntityTag tag = new EntityTag(etag);
+
+    	//EntityTag tag = new EntityTag(etag);
 
     	response.setFrom(now);
     	response.setTo(nextPass);
@@ -229,7 +245,7 @@ public class SatelliteResource {
 		return Response.ok(response)
 			.header(HttpHeaders.EXPIRES, expires)
 			.cacheControl(cache)
-			.tag(tag)
+			//.tag(tag)
 			.build();
 	}
 
@@ -237,6 +253,6 @@ public class SatelliteResource {
 	@Path("{id}/tle")
 	@Produces({MediaType.TEXT_PLAIN})
 	public Response getSatelliteTLE(@PathParam("id") String id) {
-		return Response.status(HttpStatus.SC_NOT_FOUND).build();
+		return Response.status(HttpStatus.SC_NOT_IMPLEMENTED).build();
 	}
 }

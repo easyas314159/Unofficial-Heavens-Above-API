@@ -70,17 +70,25 @@ public class HeavensAbove {
 	private void extractSatelliteDetails(NodeList page, Satellite satellite) {
 		NodeList working = null;
 
-		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_lblTitle"));
+		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_lblTitle"), true);
 		String name = working.asString();
 		int idx = name.lastIndexOf('-');
 		if(idx > 0) {
 			satellite.setName(StringUtils.trimToNull(name.substring(0, idx)));
 		}
 		
-		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_ContentPlaceHolder1_lblIntDesig"));
+		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_ContentPlaceHolder1_lblIntDesig"), true);
 		satellite.setIdc(StringUtils.trimToNull(working.asString()));
 
-		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_ContentPlaceHolder1_lblLaunchDate"));
+		Date launched = null;
+		DateFormat f = new SimpleDateFormat("HH:mm, MMMM dd, yyyy");
+
+		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_ContentPlaceHolder1_lblLaunchDate"), true);
+		try {
+			launched = f.parse(StringUtils.trimToNull(working.asString()));
+		}
+		catch(ParseException e) {}
+		satellite.setLaunched(launched);
 	}
 
 	public SatellitePasses getVisiblePasses(int id, double lat, double lng,
