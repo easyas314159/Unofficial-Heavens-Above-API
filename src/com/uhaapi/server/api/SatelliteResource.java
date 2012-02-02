@@ -89,7 +89,7 @@ public class SatelliteResource {
 		if(memcached != null) {
 			tSat = new GsonTranscoder<Satellite>(Satellite.class);
 			key = NS_SATELLITES + DigestUtils.md5Hex(String.format("%d", id));
-			memcached.get(key, tSat);
+			response = memcached.get(key, tSat);
 		}
 
 		try {
