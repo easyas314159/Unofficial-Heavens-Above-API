@@ -5,6 +5,7 @@ import javax.annotation.Nullable;
 import org.apache.http.client.HttpClient;
 import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.cache.CachingHttpClient;
 import org.apache.http.params.HttpParams;
 
 import com.google.inject.Inject;
@@ -32,6 +33,6 @@ public class HttpClientProvider implements Provider<HttpClient> {
 		httpClient.addRequestInterceptor(gzipInterceptor);
 		httpClient.addResponseInterceptor(gzipInterceptor);
 
-		return httpClient;
+		return new CachingHttpClient(httpClient);
 	}
 }
