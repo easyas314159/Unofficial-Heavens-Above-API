@@ -11,10 +11,7 @@ import java.util.concurrent.Executors;
 
 import javax.crypto.Mac;
 
-import net.spy.memcached.MemcachedClientIF;
-
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -28,8 +25,6 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 
 public abstract class MapsService {
-	private static final String NS_MAPS = DigestUtils.md5Hex("GoogleMaps");
-
 	protected static final ExecutorService threadPool = Executors.newCachedThreadPool();
 
 	public static final String SIGNING_ALGORITHM = "HmacSHA1";
@@ -41,15 +36,12 @@ public abstract class MapsService {
 
 	private boolean sensor = false;
 
-	private MemcachedClientIF memcached = null;
-
 	private ThreadLocal<Mac> threadMac = new ThreadLocal<Mac>();
 
-	protected MapsService(MemcachedClientIF memcached, MapsCredentials credentials) {
-		this(null, memcached, credentials);
+	protected MapsService(MapsCredentials credentials) {
+		this(null, credentials);
 	}
-	protected MapsService(HttpClient httpClient, MemcachedClientIF memcached, MapsCredentials credentials) {
-		this.memcached = memcached;
+	protected MapsService(HttpClient httpClient, MapsCredentials credentials) {
 		this.credentials = credentials;
 
 		this.httpClient = httpClient == null ? new DefaultHttpClient() : httpClient;
@@ -83,22 +75,13 @@ public abstract class MapsService {
 
 		String result = null;
 		try {
-			String key = null;
 			URI uri = generateURI(path, params);
-			if(memcached != null) {
-				key = NS_MAPS + DigestUtils.md5Hex(uri.getPath() + "?" + uri.getQuery());
-				result = (String)memcached.get(key);
-			}
 			if(result == null) {
 				HttpGet get = new HttpGet(uri);
 				HttpResponse rsp = httpClient.execute(get);
 				HttpEntity entity = rsp.getEntity();
 
 				result = IOUtils.toString(entity.getContent());
-
-				if(memcached != null) {
-					memcached.set(key, 2592000, result);
-				}
 			}
 		}
 		catch(Exception ex) {

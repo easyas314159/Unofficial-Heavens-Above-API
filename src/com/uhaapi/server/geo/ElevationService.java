@@ -5,8 +5,6 @@ import java.util.Vector;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
-import net.spy.memcached.MemcachedClientIF;
-
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.message.BasicNameValuePair;
@@ -14,11 +12,11 @@ import org.apache.http.message.BasicNameValuePair;
 import com.uhaapi.server.util.GsonUtils;
 
 public class ElevationService extends MapsService {
-	public ElevationService(MemcachedClientIF memcached, MapsCredentials credentials) {
-		super(null, memcached, credentials);
+	public ElevationService(MapsCredentials credentials) {
+		super(null, credentials);
 	}
-	public ElevationService(HttpClient httpClient, MemcachedClientIF memcached, MapsCredentials credentials) {
-		super(httpClient, memcached, credentials);
+	public ElevationService(HttpClient httpClient, MapsCredentials credentials) {
+		super(httpClient, credentials);
 	}
 
 	public Future<ElevationResponse> elevationAsync(final double lat, final double lng) {
