@@ -21,6 +21,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIUtils;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 
@@ -45,7 +46,7 @@ public abstract class MapsService {
 
 	private MapsService(Cache<String, String> cache) {
 		this.cache = cache;
-		this.httpClient = new DefaultHttpClient();
+		this.httpClient = new DefaultHttpClient(new ThreadSafeClientConnManager());
 	}
 
 	protected MapsService(Cache<String, String> cache, String apiKey) {
