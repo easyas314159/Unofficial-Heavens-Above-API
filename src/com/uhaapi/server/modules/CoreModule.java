@@ -9,6 +9,7 @@ import javax.servlet.ServletContext;
 
 import net.spy.memcached.MemcachedClientIF;
 
+import org.apache.http.impl.client.cache.CacheConfig;
 import org.apache.log4j.Logger;
 import org.space_track.SpaceTrack;
 
@@ -22,8 +23,8 @@ import com.uhaapi.server.LoadFilter;
 import com.uhaapi.server.MemcachedListener;
 import com.uhaapi.server.ServletInitOptions;
 import com.uhaapi.server.ThreadPoolListener;
-import com.uhaapi.server.accepts.PrettyPrinting;
 import com.uhaapi.server.geo.MapsCredentials;
+import com.uhaapi.server.injection.PrettyPrinting;
 
 public class CoreModule extends JerseyServletModule {
 	private final Logger log = Logger.getLogger(getClass());
@@ -78,15 +79,27 @@ public class CoreModule extends JerseyServletModule {
 			.annotatedWith(PrettyPrinting.class)
 			.toProvider(new BooleanProvider(ctx, ServletInitOptions.APP_PRETTY_PRINTING, Boolean.FALSE))
 			.asEagerSingleton();
-
-		bind(String.class)
-			.annotatedWith(Names.named(ServletInitOptions.APP_USER_AGENT))
-			.toProvider(new StringProvider(ctx, ServletInitOptions.APP_USER_AGENT, null))
-			.asEagerSingleton();
-
 		bind(Integer.class)
 			.annotatedWith(Names.named(ServletInitOptions.APP_DEGREE_PRECISION_DENOMINATOR))
 			.toProvider(new IntegerProvider(ctx, ServletInitOptions.APP_DEGREE_PRECISION_DENOMINATOR, 20))
+			.asEagerSingleton();
+
+		// HTTP Client
+		bind(String.class)
+			.annotatedWith(Names.named(ServletInitOptions.HTTP_USER_AGENT))
+			.toProvider(new StringProvider(ctx, ServletInitOptions.HTTP_USER_AGENT, null))
+			.asEagerSingleton();
+		bind(Boolean.class)
+			.annotatedWith(Names.named(ServletInitOptions.HTTP_HEURISTIC_CACHE))
+			.toProvider(new BooleanProvider(ctx, ServletInitOptions.HTTP_HEURISTIC_CACHE, CacheConfig.DEFAULT_HEURISTIC_CACHING_ENABLED))
+			.asEagerSingleton();
+		bind(Float.class)
+			.annotatedWith(Names.named(ServletInitOptions.HTTP_HEURISTIC_COEFFICIENT))
+			.toProvider(new FloatProvider(ctx, ServletInitOptions.HTTP_HEURISTIC_COEFFICIENT, CacheConfig.DEFAULT_HEURISTIC_COEFFICIENT))
+			.asEagerSingleton();
+		bind(Long.class)
+			.annotatedWith(Names.named(ServletInitOptions.HTTP_HEURISTIC_LIFETIME))
+			.toProvider(new LongProvider(ctx, ServletInitOptions.HTTP_HEURISTIC_LIFETIME, CacheConfig.DEFAULT_HEURISTIC_LIFETIME))
 			.asEagerSingleton();
 
 		// Google Maps API

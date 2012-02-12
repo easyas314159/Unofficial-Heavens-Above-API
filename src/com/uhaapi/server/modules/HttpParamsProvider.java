@@ -16,7 +16,7 @@ public class HttpParamsProvider implements Provider<HttpParams> {
 
 	@Inject
 	public HttpParamsProvider(
-			@Named(ServletInitOptions.APP_USER_AGENT) @Nullable String userAgent
+			@Named(ServletInitOptions.HTTP_USER_AGENT) @Nullable String userAgent
 		){
 		this.userAgent = userAgent;
 	}

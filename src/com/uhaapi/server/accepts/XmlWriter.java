@@ -16,6 +16,7 @@ import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 
 import com.google.inject.Inject;
+import com.uhaapi.server.injection.PrettyPrinting;
 
 @Provider
 @Produces({MediaType.APPLICATION_XML})

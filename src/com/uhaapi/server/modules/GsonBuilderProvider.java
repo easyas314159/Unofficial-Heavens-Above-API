@@ -5,7 +5,7 @@ import java.util.Date;
 import com.google.gson.GsonBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
-import com.uhaapi.server.accepts.PrettyPrinting;
+import com.uhaapi.server.injection.PrettyPrinting;
 import com.uhaapi.server.util.DateAdapter;
 
 public class GsonBuilderProvider implements Provider<GsonBuilder> {

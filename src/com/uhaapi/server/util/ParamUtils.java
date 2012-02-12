@@ -60,6 +60,20 @@ public final class ParamUtils {
 		return result;
 	}
 
+	public static Float asFloat(String value, Float def) {
+		value = StringUtils.trimToNull(value);
+		if(value == null) {
+			return def;
+		}
+
+		Float result = def;
+		try {
+			result = Float.valueOf(value);
+		}
+		catch(Throwable t) {}
+		return result;
+	}
+	
 	public static Double asDouble(String value) {
 		return asDouble(value, null);
 	}
