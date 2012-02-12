@@ -22,10 +22,9 @@
 		<listener-class>com.uhaapi.server.InjectorListener</listener-class>
 	</listener>
 
-	<context-param>
-		<param-name>app.user_agent</param-name>
-		<param-value>Unofficial Heavens Above API (uhaapi.com)</param-value>
-	</context-param>
+	<listener>
+		<listener-class>com.uhaapi.server.SpaceTrackListener</listener-class>
+	</listener>
 
 	<filter>
 		<display-name>jsonp</display-name>

@@ -11,4 +11,7 @@ public final class ServletInitOptions {
 
 	public static final String MAPS_CLIENT_ID = "maps.client_id";
 	public static final String MAPS_CLIENT_KEY = "maps.client_key";
+
+	public static final String SPACETRACK_USERNAME = "space-track.username";
+	public static final String SPACETRACK_PASSWORD = "space-track.password";
 }

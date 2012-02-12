@@ -10,6 +10,7 @@ import javax.servlet.ServletContext;
 import net.spy.memcached.MemcachedClientIF;
 
 import org.apache.log4j.Logger;
+import org.space_track.SpaceTrack;
 
 import com.google.inject.name.Names;
 import com.heavens_above.HeavensAbove;
@@ -51,6 +52,9 @@ public class CoreModule extends JerseyServletModule {
 			bind(HeavensAbove.class)
 				.toProvider(HeavensAboveProvider.class)
 				.asEagerSingleton();
+			bind(SpaceTrack.class)
+				.toProvider(SpaceTrackProvider.class)
+				.asEagerSingleton();
 
 			Map<String, String> params = new HashMap<String, String>();
             params.put(
@@ -77,7 +81,7 @@ public class CoreModule extends JerseyServletModule {
 
 		bind(String.class)
 			.annotatedWith(Names.named(ServletInitOptions.APP_USER_AGENT))
-			.toProvider(new StringProvider(ctx, ServletInitOptions.APP_USER_AGENT, "Unoffical Heavens Above API (uhaapi.com)"))
+			.toProvider(new StringProvider(ctx, ServletInitOptions.APP_USER_AGENT, null))
 			.asEagerSingleton();
 
 		bind(Integer.class)
@@ -93,6 +97,16 @@ public class CoreModule extends JerseyServletModule {
 		bind(String.class)
 			.annotatedWith(Names.named(ServletInitOptions.MAPS_CLIENT_KEY))
 			.toProvider(new StringProvider(ctx, ServletInitOptions.MAPS_CLIENT_KEY, null))
+			.asEagerSingleton();
+		
+		// Space-Track
+		bind(String.class)
+			.annotatedWith(Names.named(ServletInitOptions.SPACETRACK_USERNAME))
+			.toProvider(new StringProvider(ctx, ServletInitOptions.SPACETRACK_USERNAME, null))
+			.asEagerSingleton();
+		bind(String.class)
+			.annotatedWith(Names.named(ServletInitOptions.SPACETRACK_PASSWORD))
+			.toProvider(new StringProvider(ctx, ServletInitOptions.SPACETRACK_PASSWORD, null))
 			.asEagerSingleton();
 	}
 }

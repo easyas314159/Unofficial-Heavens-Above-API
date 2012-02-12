@@ -14,10 +14,13 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.CacheControl;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.EntityTag;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
+import net.spy.memcached.GsonTranscoder;
+import net.spy.memcached.KeyedMemcachedClient;
 import net.spy.memcached.MemcachedClientIF;
 import net.spy.memcached.transcoders.Transcoder;
 
@@ -28,15 +31,16 @@ import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicHeaderElement;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.log4j.Logger;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.heavens_above.HeavensAbove;
+import com.uhaapi.server.MemcachedKeys;
 import com.uhaapi.server.ServletInitOptions;
 import com.uhaapi.server.api.entity.Satellite;
 import com.uhaapi.server.api.entity.SatellitePass;
 import com.uhaapi.server.api.entity.SatellitePasses;
-import com.uhaapi.server.cache.GsonTranscoder;
 import com.uhaapi.server.geo.ElevationResponse;
 import com.uhaapi.server.geo.ElevationService;
 import com.uhaapi.server.geo.LatLng;
@@ -47,10 +51,12 @@ public class SatelliteResource {
 	private static final GsonTranscoder<SatellitePasses> transcoderPasses
 		= new GsonTranscoder<SatellitePasses>(SatellitePasses.class);
 
-	private final String NS_SATELLITES = DigestUtils.md5Hex("satellites");
-	private final String NS_PASSES = DigestUtils.md5Hex("satellites/passes");
+	private final Logger log = Logger.getLogger(getClass());
+	
+	private final MemcachedClientIF memcachedSat;
+	private final MemcachedClientIF memcachedPasses;
+	private final MemcachedClientIF memcachedTLE;
 
-	private final MemcachedClientIF memcached;
 	private final ElevationService elevationService;
 	private final HeavensAbove heavensScraper;
 
@@ -63,7 +69,10 @@ public class SatelliteResource {
 			HeavensAbove heavensScraper,
 			@Named(ServletInitOptions.APP_DEGREE_PRECISION_DENOMINATOR) Integer precisionDenominator
 		) {
-		this.memcached = memcached;
+		this.memcachedSat = new KeyedMemcachedClient(memcached, MemcachedKeys.SATELLITES);
+		this.memcachedPasses = new KeyedMemcachedClient(memcached, MemcachedKeys.SATELLITE_PASSES);
+		this.memcachedTLE = new KeyedMemcachedClient(memcached, MemcachedKeys.SATELLITE_TLE);
+
 		this.elevationService = elevationService;
 		this.heavensScraper = heavensScraper;
 
@@ -86,18 +95,18 @@ public class SatelliteResource {
 
 		String key = null;
 		Satellite response = null;
-		if(memcached != null) {
+		if(memcachedSat != null) {
 			tSat = new GsonTranscoder<Satellite>(Satellite.class);
-			key = NS_SATELLITES + DigestUtils.md5Hex(String.format("%d", id));
-			response = memcached.get(key, tSat);
+			key = DigestUtils.md5Hex(String.format("%d", id));
+			response = memcachedSat.get(key, tSat);
 		}
 
 		try {
 			if(response == null) {
 				response = heavensScraper.getSatellite(id);
 
-				if(memcached != null && response != null) {
-					memcached.set(key, 24*60*60, response, tSat);
+				if(memcachedSat != null && response != null) {
+					memcachedSat.set(key, 24*60*60, response, tSat);
 				}
 			}
 		}
@@ -133,20 +142,17 @@ public class SatelliteResource {
 			@QueryParam("lng") @DefaultValue("0") Double lng,
 			@QueryParam("lm") Double lm
 		) {
-		String key = null;
-
 		Date now = new Date();
 		Calendar cal = Calendar.getInstance();
 
 		long latid = Math.round(precisionDenominator * lat);
     	long lngid = Math.round(precisionDenominator * lng);
 
-    	String etag = DigestUtils.md5Hex(String.format("%s:%d:%d", id, latid, lngid));
+    	String key = DigestUtils.md5Hex(String.format("%s:%d:%d", id, latid, lngid));
 
     	Future<SatellitePasses> asyncCachedPasses = null;
-    	if(memcached != null) {
-	    	key = NS_PASSES + etag;
-	    	asyncCachedPasses = memcached.asyncGet(key, transcoderPasses);
+    	if(memcachedPasses != null) {
+	    	asyncCachedPasses = memcachedPasses.asyncGet(key, transcoderPasses);
     	}
 
     	lat = ((double)latid) / precisionDenominator;
@@ -179,7 +185,7 @@ public class SatelliteResource {
 
 	    		cachedPasses = heavensScraper.getVisiblePasses(id, lat, lng, alt);
 
-	    		if(memcached != null) {
+	    		if(memcachedPasses != null) {
 	    			int expires = 0;
 	    			if(cachedPasses != null) {
 	    	        	cal.setTime(cachedPasses.getTo());
@@ -187,11 +193,12 @@ public class SatelliteResource {
 
 	    				expires = (int)(cal.getTimeInMillis() / 1000);
 	    			}
-    				memcached.set(key, expires, cachedPasses, transcoderPasses);
+    				memcachedPasses.set(key, expires, cachedPasses, transcoderPasses);
 	    		}
 	    	}
     	}
     	catch(Exception ex) {
+    		log.warn("", ex);
     		return Response.serverError().build();
     	}
 
@@ -227,7 +234,7 @@ public class SatelliteResource {
 
     	cache.setMaxAge((int)(expires.getTime() - now.getTime()) / 1000);
 
-    	//EntityTag tag = new EntityTag(etag);
+    	EntityTag tag = new EntityTag(key);
 
     	response.setFrom(now);
     	response.setTo(nextPass);
@@ -245,7 +252,7 @@ public class SatelliteResource {
 		return Response.ok(response)
 			.header(HttpHeaders.EXPIRES, expires)
 			.cacheControl(cache)
-			//.tag(tag)
+			.tag(tag)
 			.build();
 	}
 
@@ -253,6 +260,13 @@ public class SatelliteResource {
 	@Path("{id}/tle")
 	@Produces({MediaType.TEXT_PLAIN})
 	public Response getSatelliteTLE(@PathParam("id") String id) {
-		return Response.status(HttpStatus.SC_NOT_IMPLEMENTED).build();
+		String key = DigestUtils.md5Hex(id);
+
+		//memcachedTLE.get(key, new GsonTranscoder<T>(gsonBuilder, baseType))
+
+		return Response
+				.status(HttpStatus.SC_NOT_IMPLEMENTED)
+				.type(MediaType.TEXT_PLAIN)
+				.build();
 	}
 }
