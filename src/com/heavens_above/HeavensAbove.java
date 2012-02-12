@@ -201,7 +201,7 @@ public class HeavensAbove {
 			}
 			prevPassTime.setTimeInMillis(nextPassTime.getTimeInMillis());
 			result.setStart(new SatellitePassWaypoint(start, ParamUtils
-					.asDouble(details.get(3)), convertCompassPoint(details
+					.asDouble(details.get(3).replaceAll("[^0-9\\.]", "")), convertCompassPoint(details
 					.get(4))));
 
 			Date max = format.parse(String.format("%s %04d %s", details.get(0),
@@ -212,7 +212,7 @@ public class HeavensAbove {
 			}
 			prevPassTime.setTimeInMillis(nextPassTime.getTimeInMillis());
 			result.setMax(new SatellitePassWaypoint(max, ParamUtils.asDouble(details
-					.get(6)), convertCompassPoint(details.get(7))));
+					.get(6).replaceAll("[^0-9\\.]", "")), convertCompassPoint(details.get(7))));
 
 			Date end = format.parse(String.format("%s %04d %s", details.get(0),
 					prevPassTime.get(Calendar.YEAR), details.get(8)));
@@ -222,7 +222,7 @@ public class HeavensAbove {
 			}
 			prevPassTime.setTimeInMillis(nextPassTime.getTimeInMillis());
 			result.setEnd(new SatellitePassWaypoint(end, ParamUtils.asDouble(details
-					.get(9)), convertCompassPoint(details.get(10))));
+					.get(9).replaceAll("[^0-9\\.]", "")), convertCompassPoint(details.get(10))));
 		} catch(Exception ex) {
 			log.warn("Failed to parse satellite pass", ex);
 		}
