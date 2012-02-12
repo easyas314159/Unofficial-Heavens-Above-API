@@ -32,6 +32,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIUtils;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 import org.htmlparser.Node;
@@ -80,7 +81,7 @@ public class SatPasses extends HttpServlet {
 	public void init(ServletConfig config) throws ServletException {
 		super.init(config);
 
-		httpClient = new DefaultHttpClient();
+		httpClient = new DefaultHttpClient(new ThreadSafeClientConnManager());
 
 		ServletContext context = config.getServletContext();
 		MemcachedClient memcached = (MemcachedClient)context.getAttribute(Configurator.MEMCAHED);
@@ -231,7 +232,7 @@ public class SatPasses extends HttpServlet {
     }
 
     private SatPassResponse extractDetails(NodeList page, SatPassResponse response) {
-    	DateFormat searchRangeFormat = new SimpleDateFormat("HH:mm EEEE, d MMMM, yyyy");
+    	DateFormat searchRangeFormat = new SimpleDateFormat("d MMMM yyyy HH:mm");
     	NodeList working = null;
 
     	// The Satellite Name
@@ -313,7 +314,7 @@ public class SatPasses extends HttpServlet {
 			prevPassTime.setTimeInMillis(nextPassTime.getTimeInMillis());
 			result.setStart(new SatPassWaypoint(
 					start,
-					ParamUtils.asDouble(details.get(3)),
+					ParamUtils.asDouble(details.get(3).replaceAll("[^0-9\\.]", "")),
 					convertCompassPoint(details.get(4))
 				));
 
@@ -325,7 +326,7 @@ public class SatPasses extends HttpServlet {
 			prevPassTime.setTimeInMillis(nextPassTime.getTimeInMillis());
 			result.setMax(new SatPassWaypoint(
 					max,
-					ParamUtils.asDouble(details.get(6)),
+					ParamUtils.asDouble(details.get(6).replaceAll("[^0-9\\.]", "")),
 					convertCompassPoint(details.get(7))
 				));
 
@@ -337,7 +338,7 @@ public class SatPasses extends HttpServlet {
 			prevPassTime.setTimeInMillis(nextPassTime.getTimeInMillis());
 			result.setEnd(new SatPassWaypoint(
 					end,
-					ParamUtils.asDouble(details.get(9)),
+					ParamUtils.asDouble(details.get(9).replaceAll("[^0-9\\.]", "")),
 					convertCompassPoint(details.get(10))
 				));
 		}
