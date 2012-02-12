@@ -1,4 +1,4 @@
-package com.uhaapi.server.cache;
+package net.spy.memcached;
 
 import java.lang.reflect.Type;
 
