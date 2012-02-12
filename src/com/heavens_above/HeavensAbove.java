@@ -112,6 +112,10 @@ public class HeavensAbove {
 		response.setLocation(new LatLng(lat, lng));
 
 		extractTimeDetails(page, response);
+		if(response.getFrom() == null) {
+			return null;
+		}
+
 		extractAllPasses(page, response);
 
 		return response;
@@ -120,31 +124,28 @@ public class HeavensAbove {
 	private void extractTimeDetails(NodeList page,
 			SatellitePasses passes) {
 		DateFormat searchRangeFormat = new SimpleDateFormat(
-				"HH:mm EEEE, d MMMM, yyyy");
+				"d MMMM yyyy HH:mm");
 		NodeList working = null;
 
 		// The Search Period
-		Date searchStart = null;
 		working = page.extractAllNodesThatMatch(new HasParentFilter(
 				new HasAttributeFilter("id",
 						"ctl00_ContentPlaceHolder1_lblSearchStart")), true);
-		try {
-			searchStart = searchRangeFormat.parse(working.asString());
-			passes.setFrom(searchStart);
-		} catch(ParseException ex) {
-			log.warn("Failed to parse start time", ex);
-		}
+		passes.setFrom(parseDate(searchRangeFormat, working.asString()));
 
-		Date searchEnd = null;
 		working = page.extractAllNodesThatMatch(new HasParentFilter(
 				new HasAttributeFilter("id",
 						"ctl00_ContentPlaceHolder1_lblSearchEnd")), true);
+		passes.setTo(parseDate(searchRangeFormat, working.asString()));
+	}
+
+	private Date parseDate(DateFormat fmt, String val) {
 		try {
-			searchEnd = searchRangeFormat.parse(working.asString());
-			passes.setTo(searchEnd);
+			return fmt.parse(val);
 		} catch(ParseException ex) {
-			log.warn("Failed to parse end time", ex);
+			log.error("Failed to parse time", ex);
 		}
+		return null;
 	}
 
 	private void extractAllPasses(NodeList page, SatellitePasses response) {
@@ -159,7 +160,13 @@ public class HeavensAbove {
 		List<SatellitePass> results = new Vector<SatellitePass>();
 		NodeList allPasses = page.extractAllNodesThatMatch(filter, true);
 		for(Node pass : allPasses.toNodeArray()) {
-			results.add(extractNextPass(pass.getChildren(), prevPassTime));
+			SatellitePass sp = extractNextPass(pass.getChildren(), prevPassTime);
+
+			if(response.getTo() == null || response.getTo().before(sp.getEnd().getTime())) {
+				response.setTo(sp.getEnd().getTime());
+			}
+
+			results.add(sp);
 		}
 		response.setResults(results);
 	}
