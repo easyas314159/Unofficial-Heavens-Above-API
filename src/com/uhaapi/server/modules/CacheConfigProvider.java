@@ -4,6 +4,7 @@ import javax.annotation.Nullable;
 
 import org.apache.http.impl.client.cache.CacheConfig;
 
+import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import com.uhaapi.server.ServletInitOptions;
@@ -13,6 +14,7 @@ public class CacheConfigProvider implements Provider<CacheConfig> {
 	private final Float heuristicCoefficient;
 	private final Long heuristicLifetime;
 
+	@Inject
 	public CacheConfigProvider(
 			@Named(ServletInitOptions.HTTP_HEURISTIC_CACHE) Boolean heuristicCache,
 			@Named(ServletInitOptions.HTTP_HEURISTIC_COEFFICIENT) @Nullable Float heuristicCoefficient,
