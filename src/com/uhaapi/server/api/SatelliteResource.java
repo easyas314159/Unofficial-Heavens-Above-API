@@ -126,12 +126,12 @@ public class SatelliteResource {
 				}
 			}
 		}
-		catch(Exception ex) {
-			return Response.serverError().build();
+		catch(IOException ex) {
+    		throw new InternalServerException("Internal IO error please try again later");
 		}
 
 		if(response == null) {
-			return Response.status(HttpStatus.SC_NOT_FOUND).build();
+			throw new NotFoundException("No satellite information available");
 		}
 
 		BasicNameValuePair rel, title;
