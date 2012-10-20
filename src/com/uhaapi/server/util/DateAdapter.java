@@ -19,7 +19,7 @@ public class DateAdapter implements JsonSerializer<Date>, JsonDeserializer<Date>
 
 	@Override
 	public Date deserialize(JsonElement el, Type type, JsonDeserializationContext ctx) throws JsonParseException {
-		return null;
+		long t = el.getAsLong();
+		return new Date(1000 * t);
 	}
-
 }

@@ -63,8 +63,8 @@ public class CoreModule extends JerseyServletModule {
             		"com.uhaapi.server;"
             	);
 
-            filter("/*").through(LoadFilter.class);
             filter("/*").through(ErrorFilter.class);
+            filter("/*").through(LoadFilter.class);
 
             serve("/*")
             	.with(GuiceContainer.class, params);

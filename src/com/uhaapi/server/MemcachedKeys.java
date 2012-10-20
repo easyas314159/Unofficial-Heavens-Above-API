@@ -9,5 +9,7 @@ public final class MemcachedKeys {
 	public static final String SATELLITE_PASSES = DigestUtils.md5Hex("satellites/passes");
 	public static final String SATELLITE_TLE = DigestUtils.md5Hex("satellites/tle");
 
+	public static final String FLARES = DigestUtils.md5Hex("iridiums"); 
+	
 	private MemcachedKeys() {}
 }

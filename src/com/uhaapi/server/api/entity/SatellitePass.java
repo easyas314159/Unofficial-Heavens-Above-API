@@ -1,11 +1,13 @@
 package com.uhaapi.server.api.entity;
 
+import java.util.Date;
+
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 
 @XmlAccessorType(XmlAccessType.NONE)
-public class SatellitePass {
+public class SatellitePass extends Pass {
 	@XmlElement
 	public Double magnitude;
 
@@ -15,7 +17,8 @@ public class SatellitePass {
 	public SatellitePassWaypoint max;
 	@XmlElement
 	public SatellitePassWaypoint end;
-	
+
+	@Override
 	public Double getMagnitude() {
 		return magnitude;
 	}
@@ -40,5 +43,14 @@ public class SatellitePass {
 	}
 	public void setEnd(SatellitePassWaypoint end) {
 		this.end = end;
+	}
+
+	@Override
+	public Date getStartTime() {
+		return getStart().getTime();
+	}
+	@Override
+	public Date getEndTime() {
+		return getEnd().getTime();
 	}
 }

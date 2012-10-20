@@ -24,10 +24,13 @@ import org.htmlparser.filters.CssSelectorNodeFilter;
 import org.htmlparser.filters.HasAttributeFilter;
 import org.htmlparser.filters.HasParentFilter;
 import org.htmlparser.filters.NotFilter;
+import org.htmlparser.filters.TagNameFilter;
 import org.htmlparser.util.NodeList;
 import org.htmlparser.visitors.NodeVisitor;
 
 import com.uhaapi.server.api.entity.Compass;
+import com.uhaapi.server.api.entity.IridiumFlare;
+import com.uhaapi.server.api.entity.IridiumFlares;
 import com.uhaapi.server.api.entity.Satellite;
 import com.uhaapi.server.api.entity.SatellitePass;
 import com.uhaapi.server.api.entity.SatellitePassWaypoint;
@@ -232,6 +235,88 @@ public class HeavensAbove {
 
 	private Double convertCompassPoint(String name) {
 		return Compass.valueOf(name).getAzimuth();
+	}
+
+	public IridiumFlares getIridiumFlares(double lat, double lng, double alt) {
+		List<NameValuePair> params = new Vector<NameValuePair>();
+		params.add(new BasicNameValuePair("lat", Double.toString(lat)));
+		params.add(new BasicNameValuePair("lng", Double.toString(lng)));
+		params.add(new BasicNameValuePair("alt", Double.toString(alt)));
+		params.add(new BasicNameValuePair("tz", "UCT"));
+
+		NodeList page = getPage("IridiumFlares.aspx", params);
+		if(page == null) {
+			return null;
+		}
+
+		IridiumFlares response = new IridiumFlares();
+		response.setAltitude(alt);
+		response.setLocation(new LatLng(lat, lng));
+
+		DateFormat parser = new SimpleDateFormat("HH:mm EEEE, d MMMM, yyyy");
+
+		Node fromNode = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_ContentPlaceHolder1_lblSearchStart"), true).elementAt(0).getFirstChild();
+		Node toNode = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_ContentPlaceHolder1_lblSearchEnd"), true).elementAt(0).getFirstChild();
+
+		try {
+			response.setFrom(parser.parse(fromNode.getText()));
+		} catch(ParseException ex) {}
+		try {
+			response.setTo(parser.parse(toNode.getText()));
+		} catch(ParseException ex) {}
+
+		extractAllFlares(page, response);
+
+		return response;
+	}
+
+	private void extractAllFlares(NodeList page, IridiumFlares flares) {
+		NodeList working = null;
+
+		// The Search Period
+		working = page.extractAllNodesThatMatch(new HasParentFilter(
+				new AndFilter(
+					new TagNameFilter("table"),
+					new HasAttributeFilter("class", "standardTable"))), true);
+		working.keepAllNodesThatMatch(
+				new AndFilter(
+					new TagNameFilter("tr"),
+					new NotFilter(new HasAttributeFilter("class", "tablehead"))), false);
+
+		List<IridiumFlare> results = new Vector<IridiumFlare>();
+		for(Node pass : working.toNodeArray()) {
+			IridiumFlare flare = extractNextFlare(pass.getChildren());
+			if(flare == null) {
+				continue;
+			}
+			results.add(flare);
+		}
+
+		flares.setResults(results);
+	}
+	
+	private IridiumFlare extractNextFlare(NodeList pass) {
+		IridiumFlare flare = new IridiumFlare();
+		DateFormat format = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+
+		Node[] nodes =  pass.toNodeArray();
+		for(int idx = 0; idx < nodes.length; ++idx) {
+			nodes[idx] = nodes[idx].getFirstChild();
+		}
+
+		try {
+			nodes[0] = nodes[0].getFirstChild();
+			flare.setTime(format.parse(nodes[0].getText()));
+		} catch(ParseException ex) {
+			return null;
+		}
+
+		flare.setMagnitude(Double.parseDouble(nodes[1].getText()));
+
+		flare.setAltitude(Double.parseDouble(nodes[2].getText().split("&", 2)[0]));
+		flare.setAzimuth(Double.parseDouble(nodes[3].getText().split("&", 2)[0]));
+
+		return flare;
 	}
 
 	private NodeList getPage(String path, List<NameValuePair> params) {

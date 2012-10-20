@@ -2,6 +2,9 @@ package com.uhaapi.server.modules;
 
 import java.util.Date;
 
+import org.space_track.TwoLineElement;
+import org.space_track.TwoLineElementAdapter;
+
 import com.google.gson.GsonBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
@@ -20,6 +23,7 @@ public class GsonBuilderProvider implements Provider<GsonBuilder> {
 	public GsonBuilder get() {
 		GsonBuilder gsonBuilder = new GsonBuilder()
 			.registerTypeAdapter(Date.class, new DateAdapter())
+			.registerTypeAdapter(TwoLineElement.class, new TwoLineElementAdapter());
 			;
 
 		if(prettyPrinting) {

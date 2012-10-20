@@ -26,18 +26,22 @@ import net.spy.memcached.transcoders.Transcoder;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.http.HttpHeaders;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicHeaderElement;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
+import org.space_track.TwoLineElement;
 
+import com.google.gson.GsonBuilder;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.heavens_above.HeavensAbove;
 import com.uhaapi.server.MemcachedKeys;
 import com.uhaapi.server.ServletInitOptions;
+import com.uhaapi.server.api.entity.IridiumFlare;
+import com.uhaapi.server.api.entity.IridiumFlares;
+import com.uhaapi.server.api.entity.Pass;
 import com.uhaapi.server.api.entity.Satellite;
 import com.uhaapi.server.api.entity.SatellitePass;
 import com.uhaapi.server.api.entity.SatellitePasses;
@@ -48,14 +52,17 @@ import com.uhaapi.server.geo.LatLng;
 @Path("satellites")
 @Produces({MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML})
 public class SatelliteResource {
-	private static final GsonTranscoder<SatellitePasses> transcoderPasses
-		= new GsonTranscoder<SatellitePasses>(SatellitePasses.class);
+	private final GsonTranscoder<SatellitePasses> transcoderPasses;
+	private final GsonTranscoder<TwoLineElement> transcoderTLE;
+
+	private final GsonTranscoder<IridiumFlares> transcoderFlares;
 
 	private final Logger log = Logger.getLogger(getClass());
 	
 	private final MemcachedClientIF memcachedSat;
 	private final MemcachedClientIF memcachedPasses;
 	private final MemcachedClientIF memcachedTLE;
+	private final MemcachedClientIF memcachedFlares;
 
 	private final ElevationService elevationService;
 	private final HeavensAbove heavensScraper;
@@ -67,16 +74,22 @@ public class SatelliteResource {
 			MemcachedClientIF memcached,
 			ElevationService elevationService,
 			HeavensAbove heavensScraper,
+			GsonBuilder gsonBuilder,
 			@Named(ServletInitOptions.APP_DEGREE_PRECISION_DENOMINATOR) Integer precisionDenominator
 		) {
 		this.memcachedSat = new KeyedMemcachedClient(memcached, MemcachedKeys.SATELLITES);
 		this.memcachedPasses = new KeyedMemcachedClient(memcached, MemcachedKeys.SATELLITE_PASSES);
 		this.memcachedTLE = new KeyedMemcachedClient(memcached, MemcachedKeys.SATELLITE_TLE);
+		this.memcachedFlares = new KeyedMemcachedClient(memcached, MemcachedKeys.FLARES);
 
 		this.elevationService = elevationService;
 		this.heavensScraper = heavensScraper;
 
 		this.precisionDenominator = precisionDenominator;
+
+		this.transcoderPasses = new GsonTranscoder<SatellitePasses>(gsonBuilder, SatellitePasses.class);
+		this.transcoderTLE = new GsonTranscoder<TwoLineElement>(gsonBuilder, TwoLineElement.class);
+		this.transcoderFlares = new GsonTranscoder<IridiumFlares>(gsonBuilder, IridiumFlares.class);
 	}
 
 	@GET
@@ -188,8 +201,8 @@ public class SatelliteResource {
 	    		if(memcachedPasses != null) {
 	    			int expires = 0;
 	    			if(cachedPasses != null) {
-	    	        	cal.setTime(cachedPasses.getTo());
-	    	        	cal.add(Calendar.DAY_OF_MONTH, -1);
+	    	        	cal.setTime(cachedPasses.getFrom());
+	    	        	cal.add(Calendar.DAY_OF_MONTH, 1);
 
 	    				expires = (int)(cal.getTimeInMillis() / 1000);
 	    			}
@@ -207,37 +220,19 @@ public class SatelliteResource {
     	}
 
     	cal.setTime(now);
-    	cal.add(Calendar.DAY_OF_MONTH, 1);
-    	response.setTo(cal.getTime());
-
-    	Date nextPass = cachedPasses.getTo();
-    	List<SatellitePass> releventPasses = new ArrayList<SatellitePass>();
-    	for(SatellitePass pass : cachedPasses.getResults()){
-    		if(pass.getEnd().getTime().after(now)) {
-    			if(pass.getStart().getTime().before(response.getTo())
-    					&& (lm == null || pass.getMagnitude() <= lm)
-    				) {
-    				releventPasses.add(pass);
-    			}
-    			else if(pass.getStart().getTime().before(nextPass)) {
-    				nextPass = pass.getStart().getTime();
-    			}
-    		}
-    	}
-    	response.setResults(releventPasses);
-
-    	cal.setTime(nextPass);
-    	cal.add(Calendar.DAY_OF_MONTH, -1);
-    	Date expires = cal.getTime();
-
-    	CacheControl cache = new CacheControl();
-
-    	cache.setMaxAge((int)(expires.getTime() - now.getTime()) / 1000);
-
-    	EntityTag tag = new EntityTag(key);
+    	cal.add(Calendar.DAY_OF_MONTH, 5);
 
     	response.setFrom(now);
-    	response.setTo(nextPass);
+    	response.setTo(cal.getTime());
+
+    	List<SatellitePass> releventPasses = new ArrayList<SatellitePass>();
+    	selectPasses(now, response.getTo(), lm, cachedPasses.getResults(), releventPasses);
+    	response.setResults(releventPasses);
+
+    	CacheControl cache = new CacheControl();
+    	cache.setMaxAge(86400);
+
+    	EntityTag tag = new EntityTag(key);
 
     	try {
     		ElevationResponse elevation = futureElevation.get();
@@ -250,7 +245,6 @@ public class SatelliteResource {
     	}
 
 		return Response.ok(response)
-			.header(HttpHeaders.EXPIRES, expires)
 			.cacheControl(cache)
 			.tag(tag)
 			.build();
@@ -262,11 +256,122 @@ public class SatelliteResource {
 	public Response getSatelliteTLE(@PathParam("id") String id) {
 		String key = DigestUtils.md5Hex(id);
 
-		//memcachedTLE.get(key, new GsonTranscoder<T>(gsonBuilder, baseType))
+		TwoLineElement tle = memcachedTLE.get(key, transcoderTLE);
+		if(tle == null) {
+			return Response.status(HttpStatus.SC_NOT_FOUND).build();
+		}
 
 		return Response
-				.status(HttpStatus.SC_NOT_IMPLEMENTED)
+				.status(HttpStatus.SC_OK)
 				.type(MediaType.TEXT_PLAIN)
+				.entity(tle)
 				.build();
+	}
+
+	@GET
+	@Path("iridium/flares")
+	public Response getSatellitePasses(
+			@QueryParam("lat") @DefaultValue("0") Double lat,
+			@QueryParam("lng") @DefaultValue("0") Double lng,
+			@QueryParam("lm") Double lm
+		) {
+		Date now = new Date();
+		Calendar cal = Calendar.getInstance();
+
+		long latid = Math.round(precisionDenominator * lat);
+    	long lngid = Math.round(precisionDenominator * lng);
+
+    	String key = DigestUtils.md5Hex(String.format("%d:%d", latid, lngid));
+
+    	Future<IridiumFlares> asyncCachedFlares = null;
+    	if(memcachedPasses != null) {
+    		asyncCachedFlares = memcachedFlares.asyncGet(key, transcoderFlares);
+    	}
+
+    	lat = ((double)latid) / precisionDenominator;
+    	lng = ((double)lngid) / precisionDenominator;
+
+    	// The elevation service caches results under normal
+    	// operation so making a call every request is ok
+    	Future<ElevationResponse> futureElevation = elevationService.elevationAsync(lat, lng);
+
+    	IridiumFlares response = new IridiumFlares();
+    	response.setLocation(new LatLng(lat, lng));
+
+    	IridiumFlares cachedFlares = null;
+    	if(asyncCachedFlares != null) {
+    		try {
+    			cachedFlares = asyncCachedFlares.get();
+    		}
+    		catch(Exception ex) {}
+    	}
+
+    	try {
+    		if(cachedFlares == null) {
+	    		double alt = 0.0;
+
+	    		ElevationResponse elevation = futureElevation.get();
+	    		if(elevation != null && elevation.getFirstResult() != null) {
+	    			alt = elevation.getFirstResult().getElevation();
+	    		}
+
+	    		cachedFlares = heavensScraper.getIridiumFlares(lat, lng, alt);
+
+	    		if(memcachedFlares != null) {
+	    			int expires = 0;
+	    			if(cachedFlares != null) {
+	    	        	cal.setTime(new Date());
+	    	        	cal.add(Calendar.DAY_OF_MONTH, 1);
+
+	    				expires = (int)(cal.getTimeInMillis() / 1000);
+	    			}
+	    			memcachedFlares.set(key, expires, cachedFlares, transcoderFlares);
+	    		}
+	    	}
+    	}
+    	catch(Exception ex) {
+    		log.warn("", ex);
+    		return Response.serverError().build();
+    	}
+
+    	cal.setTime(now);
+    	cal.add(Calendar.DAY_OF_MONTH, 5);
+
+    	response.setFrom(now);
+    	response.setTo(cal.getTime());
+
+    	List<IridiumFlare> releventPasses = new ArrayList<IridiumFlare>();
+    	selectPasses(now, response.getTo(), lm, cachedFlares.getResults(), releventPasses);
+    	response.setResults(releventPasses);
+
+    	CacheControl cache = new CacheControl();
+    	cache.setMaxAge(86400);
+
+    	EntityTag tag = new EntityTag(key);
+
+    	try {
+    		ElevationResponse elevation = futureElevation.get();
+    		if(elevation != null && elevation.getFirstResult() != null) {
+    			response.setAltitude(elevation.getFirstResult().getElevation());
+    		}
+    	}
+    	catch(Exception ex) {
+    		response.setAltitude(0.0);
+    	}
+
+		return Response.ok(response)
+				.cacheControl(cache)
+				.tag(tag)
+				.build();
+	}
+
+	private <X extends Pass> void selectPasses(Date start, Date end, Double lm, List<X> src, List<X> dst) {
+		for(X pass : src){
+    		if(pass.getStartTime().after(start) && pass.getStartTime().before(end)
+					&& (lm == null || pass.getMagnitude() <= lm)
+				) {
+				dst.add(pass);
+			}
+    	}
 	}
 }
