@@ -58,12 +58,7 @@ public abstract class MapsService {
 		List<NameValuePair> params = new Vector<NameValuePair>(queryString);
 
 		params.add(new BasicNameValuePair("sensor", Boolean.toString(sensor)));
-		if(credentials.getClientKey() == null) {
-			if(credentials.getClientId() != null) {
-				params.add(new BasicNameValuePair("key", credentials.getClientId()));
-			}
-		}
-		else {
+		if(credentials != null && credentials.getClientKey() != null) {
 			params.add(new BasicNameValuePair("client", credentials.getClientId()));
 			params.add(
 					new BasicNameValuePair(

@@ -16,7 +16,7 @@ public class ElevationServiceProvider implements Provider<ElevationService> {
 	@Inject
 	public ElevationServiceProvider(
 			@Nullable HttpClient httpClient,
-			MapsCredentials credentials
+			@Nullable MapsCredentials credentials
 		) {
 		this.httpClient = httpClient;
 		this.credentials = credentials;

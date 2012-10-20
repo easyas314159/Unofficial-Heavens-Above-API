@@ -3,13 +3,10 @@ package com.uhaapi.server.modules;
 import javax.annotation.Nullable;
 
 import com.google.inject.Inject;
-
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import com.uhaapi.server.ServletInitOptions;
-import com.uhaapi.server.geo.BasicCredentials;
 import com.uhaapi.server.geo.MapsCredentials;
-import com.uhaapi.server.geo.SignedCredentials;
 
 public class MapsCredentialsProvider implements Provider<MapsCredentials> {
 	private final String clientId;
@@ -26,9 +23,10 @@ public class MapsCredentialsProvider implements Provider<MapsCredentials> {
 
 	@Override
 	public MapsCredentials get() {
-		if(clientKey == null) {
-			return new BasicCredentials(clientId);
+		if(clientId == null || clientKey == null) {
+			return null;
 		}
-		return new SignedCredentials(clientId, clientKey);
+
+		return new MapsCredentials(clientId, clientKey);
 	}
 }
