@@ -2,8 +2,15 @@ package org.space_track;
 
 import java.util.Date;
 
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlRootElement;
+
 import org.apache.commons.lang.NotImplementedException;
 
+@XmlRootElement(name="tle")
+@XmlAccessorType(XmlAccessType.NONE)
 public class TwoLineElement {
 	private final String title;
 	private final String line1;
@@ -28,9 +35,11 @@ public class TwoLineElement {
 		return line2;
 	}
 
+	@XmlAttribute(name="id")
 	public String getId() {
 		return line1.substring(2, 7);
 	}
+
 	public String getClassification() {
 		return line1.substring(7, 8);
 	}
@@ -54,5 +63,13 @@ public class TwoLineElement {
 
 	public Date getEpoch() {
 		throw new NotImplementedException();
+	}
+
+	@Override
+	public String toString() {
+		return String.format(
+				"%s\n%s\n%s",
+				getTitle(), getLine1(), getLine2()
+			);
 	}
 }
