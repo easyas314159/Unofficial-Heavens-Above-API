@@ -1,5 +1,6 @@
 package com.uhaapi.server.api;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -45,6 +46,8 @@ import com.uhaapi.server.api.entity.Pass;
 import com.uhaapi.server.api.entity.Satellite;
 import com.uhaapi.server.api.entity.SatellitePass;
 import com.uhaapi.server.api.entity.SatellitePasses;
+import com.uhaapi.server.error.InternalServerException;
+import com.uhaapi.server.error.NotFoundException;
 import com.uhaapi.server.geo.ElevationResponse;
 import com.uhaapi.server.geo.ElevationService;
 import com.uhaapi.server.geo.LatLng;
@@ -189,13 +192,7 @@ public class SatelliteResource {
 
     	try {
 	    	if(cachedPasses == null) {
-	    		double alt = 0.0;
-
-	    		ElevationResponse elevation = futureElevation.get();
-	    		if(elevation != null && elevation.getFirstResult() != null) {
-	    			alt = elevation.getFirstResult().getElevation();
-	    		}
-
+	    		double alt = safeGetElevationResponse(futureElevation);
 	    		cachedPasses = heavensScraper.getVisiblePasses(id, lat, lng, alt);
 
 	    		if(memcachedPasses != null) {
@@ -210,13 +207,13 @@ public class SatelliteResource {
 	    		}
 	    	}
     	}
-    	catch(Exception ex) {
+    	catch(IOException ex) {
     		log.warn("", ex);
-    		return Response.serverError().build();
+    		throw new InternalServerException("Internal IO error please try again later");
     	}
 
     	if(cachedPasses == null) {
-    		return Response.status(HttpStatus.SC_NOT_FOUND).build();
+    		throw new NotFoundException("No pass information available");
     	}
 
     	cal.setTime(now);
@@ -224,6 +221,8 @@ public class SatelliteResource {
 
     	response.setFrom(now);
     	response.setTo(cal.getTime());
+    	
+    	response.setAltitude(cachedPasses.getAltitude());
 
     	List<SatellitePass> releventPasses = new ArrayList<SatellitePass>();
     	selectPasses(now, response.getTo(), lm, cachedPasses.getResults(), releventPasses);
@@ -234,16 +233,6 @@ public class SatelliteResource {
 
     	EntityTag tag = new EntityTag(key);
 
-    	try {
-    		ElevationResponse elevation = futureElevation.get();
-    		if(elevation != null && elevation.getFirstResult() != null) {
-    			response.setAltitude(elevation.getFirstResult().getElevation());
-    		}
-    	}
-    	catch(Exception ex) {
-    		response.setAltitude(0.0);
-    	}
-
 		return Response.ok(response)
 			.cacheControl(cache)
 			.tag(tag)
@@ -253,12 +242,12 @@ public class SatelliteResource {
 	@GET
 	@Path("{id}/tle")
 	@Produces({MediaType.TEXT_PLAIN})
-	public Response getSatelliteTLE(@PathParam("id") String id) {
+	public Response getSatelliteTLE(@PathParam("id") String id) throws NotFoundException {
 		String key = DigestUtils.md5Hex(id);
 
 		TwoLineElement tle = memcachedTLE.get(key, transcoderTLE);
 		if(tle == null) {
-			return Response.status(HttpStatus.SC_NOT_FOUND).build();
+			throw new NotFoundException("No two line element available");
 		}
 
 		return Response
@@ -306,32 +295,20 @@ public class SatelliteResource {
     		catch(Exception ex) {}
     	}
 
-    	try {
-    		if(cachedFlares == null) {
-	    		double alt = 0.0;
+		if(cachedFlares == null) {
+    		double alt = safeGetElevationResponse(futureElevation);
+    		cachedFlares = heavensScraper.getIridiumFlares(lat, lng, alt);
 
-	    		ElevationResponse elevation = futureElevation.get();
-	    		if(elevation != null && elevation.getFirstResult() != null) {
-	    			alt = elevation.getFirstResult().getElevation();
-	    		}
+    		if(memcachedFlares != null) {
+    			int expires = 0;
+    			if(cachedFlares != null) {
+    	        	cal.setTime(new Date());
+    	        	cal.add(Calendar.DAY_OF_MONTH, 1);
 
-	    		cachedFlares = heavensScraper.getIridiumFlares(lat, lng, alt);
-
-	    		if(memcachedFlares != null) {
-	    			int expires = 0;
-	    			if(cachedFlares != null) {
-	    	        	cal.setTime(new Date());
-	    	        	cal.add(Calendar.DAY_OF_MONTH, 1);
-
-	    				expires = (int)(cal.getTimeInMillis() / 1000);
-	    			}
-	    			memcachedFlares.set(key, expires, cachedFlares, transcoderFlares);
-	    		}
-	    	}
-    	}
-    	catch(Exception ex) {
-    		log.warn("", ex);
-    		return Response.serverError().build();
+    				expires = (int)(cal.getTimeInMillis() / 1000);
+    			}
+    			memcachedFlares.set(key, expires, cachedFlares, transcoderFlares);
+    		}
     	}
 
     	cal.setTime(now);
@@ -339,6 +316,7 @@ public class SatelliteResource {
 
     	response.setFrom(now);
     	response.setTo(cal.getTime());
+    	response.setAltitude(cachedFlares.getAltitude());
 
     	List<IridiumFlare> releventPasses = new ArrayList<IridiumFlare>();
     	selectPasses(now, response.getTo(), lm, cachedFlares.getResults(), releventPasses);
@@ -348,16 +326,6 @@ public class SatelliteResource {
     	cache.setMaxAge(86400);
 
     	EntityTag tag = new EntityTag(key);
-
-    	try {
-    		ElevationResponse elevation = futureElevation.get();
-    		if(elevation != null && elevation.getFirstResult() != null) {
-    			response.setAltitude(elevation.getFirstResult().getElevation());
-    		}
-    	}
-    	catch(Exception ex) {
-    		response.setAltitude(0.0);
-    	}
 
 		return Response.ok(response)
 				.cacheControl(cache)
@@ -373,5 +341,17 @@ public class SatelliteResource {
 				dst.add(pass);
 			}
     	}
+	}
+
+	private Double safeGetElevationResponse(Future<ElevationResponse> futureElevation) {
+		try {
+			ElevationResponse elevation = futureElevation.get();
+			if(elevation != null && elevation.getFirstResult() != null) {
+    			return elevation.getFirstResult().getElevation();
+    		}
+		}
+		catch(Exception ex) {}
+		
+		return 0.0;
 	}
 }

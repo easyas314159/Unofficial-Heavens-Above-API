@@ -9,24 +9,31 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.google.gson.annotations.Expose;
 import com.uhaapi.server.geo.LatLng;
 
 @XmlRootElement(name="satellite_passes")
 @XmlAccessorType(XmlAccessType.NONE)
 public class SatellitePasses {
+	@Expose
 	@XmlAttribute
 	private Integer id = null;
 
+	@Expose
 	@XmlElement
 	private LatLng location = null;
+	@Expose
 	@XmlElement
 	private Double altitude = null;
 
+	@Expose
 	@XmlElement
 	private Date from = null;
+	@Expose
 	@XmlElement
 	private Date to = null;
 
+	@Expose
 	@XmlElement(name="pass")
 	private List<SatellitePass> results = null;
 

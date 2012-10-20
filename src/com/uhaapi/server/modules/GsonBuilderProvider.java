@@ -30,6 +30,8 @@ public class GsonBuilderProvider implements Provider<GsonBuilder> {
 			gsonBuilder = gsonBuilder.setPrettyPrinting();
 		}
 
+		gsonBuilder.excludeFieldsWithoutExposeAnnotation();
+
 		return gsonBuilder;
 	}
 }

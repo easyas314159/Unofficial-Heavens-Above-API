@@ -21,12 +21,15 @@ public class IridiumFlares {
 	@Expose
 	@XmlElement
 	private Double altitude = null;
-	
+
+	@Expose
 	@XmlElement
 	private Date from = null;
+	@Expose
 	@XmlElement
 	private Date to = null;
 
+	@Expose
 	@XmlElement(name="flare")
 	private List<IridiumFlare> results = null;
 	

@@ -5,11 +5,16 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import com.google.gson.annotations.Expose;
+
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.NONE)
 public class LatLng {
+	@Expose
 	@XmlElement
 	private double lat;
+
+	@Expose
 	@XmlElement
 	private double lng;
 
