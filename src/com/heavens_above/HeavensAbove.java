@@ -10,7 +10,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Vector;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -95,7 +95,7 @@ public class HeavensAbove {
 	}
 
 	public SatellitePasses getVisiblePasses(int id, double lat, double lng,
-			double alt) throws IOException {
+			double alt) {
 		List<NameValuePair> params = new Vector<NameValuePair>();
 		params.add(new BasicNameValuePair("satid", Integer.toString(id)));
 		params.add(new BasicNameValuePair("lat", Double.toString(lat)));
@@ -313,8 +313,8 @@ public class HeavensAbove {
 
 		flare.setMagnitude(Double.parseDouble(nodes[1].getText()));
 
-		flare.setAltitude(Double.parseDouble(nodes[2].getText().split("&", 2)[0]));
-		flare.setAzimuth(Double.parseDouble(nodes[3].getText().split("&", 2)[0]));
+		flare.setAltitude(Double.parseDouble(nodes[2].getText().split("[^0-9\\.]", 2)[0]));
+		flare.setAzimuth(Double.parseDouble(nodes[3].getText().split("[^0-9\\.]", 2)[0]));
 
 		return flare;
 	}

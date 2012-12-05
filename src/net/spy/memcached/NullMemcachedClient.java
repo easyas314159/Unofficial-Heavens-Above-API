@@ -11,8 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import net.spy.memcached.internal.BulkFuture;
 import net.spy.memcached.transcoders.Transcoder;
-
-import org.apache.commons.lang.NotImplementedException;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import com.uhaapi.server.util.CompletedFuture;
 
@@ -114,10 +113,8 @@ public class NullMemcachedClient implements MemcachedClientIF {
 	public CASResponse cas(String arg0, long arg1, Object arg2) throws OperationTimeoutException {
 		return CASResponse.NOT_FOUND;
 	}
-
 	@Override
-	public <T> CASResponse cas(String arg0, long arg1, T arg2,
-			Transcoder<T> arg3) throws OperationTimeoutException {
+	public <T> CASResponse cas(String arg0, long arg1, T arg2, Transcoder<T> arg3) throws OperationTimeoutException {
 		return CASResponse.NOT_FOUND;
 	}
 

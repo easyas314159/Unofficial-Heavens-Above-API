@@ -7,7 +7,7 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import org.apache.commons.lang.NotImplementedException;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 @XmlRootElement(name="tle")
 @XmlAccessorType(XmlAccessType.NONE)

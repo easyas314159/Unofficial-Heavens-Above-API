@@ -1,6 +1,6 @@
 package com.uhaapi.server.util;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public final class ParamUtils {
 	private ParamUtils() {}

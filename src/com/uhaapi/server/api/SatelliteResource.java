@@ -6,6 +6,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -26,7 +27,7 @@ import net.spy.memcached.MemcachedClientIF;
 import net.spy.memcached.transcoders.Transcoder;
 
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicHeaderElement;
@@ -61,7 +62,7 @@ public class SatelliteResource {
 	private final GsonTranscoder<IridiumFlares> transcoderFlares;
 
 	private final Logger log = Logger.getLogger(getClass());
-	
+
 	private final MemcachedClientIF memcachedSat;
 	private final MemcachedClientIF memcachedPasses;
 	private final MemcachedClientIF memcachedTLE;
@@ -108,13 +109,22 @@ public class SatelliteResource {
 		) {
 
 		Transcoder<Satellite> tSat = null;
+		Future<Satellite> asyncSatellite = null;
 
 		String key = null;
-		Satellite response = null;
 		if(memcachedSat != null) {
 			tSat = new GsonTranscoder<Satellite>(Satellite.class);
 			key = DigestUtils.md5Hex(String.format("%d", id));
-			response = memcachedSat.get(key, tSat);
+			asyncSatellite = memcachedSat.asyncGet(key, tSat);
+		}
+
+		Satellite response = null;
+		if(asyncSatellite != null) {
+			try {
+				response = asyncSatellite.get(1L, TimeUnit.SECONDS);
+			} catch(Exception ex) {
+				asyncSatellite.cancel(true);
+			}
 		}
 
 		try {
@@ -185,31 +195,27 @@ public class SatelliteResource {
     	SatellitePasses cachedPasses = null;
     	if(asyncCachedPasses != null) {
 	    	try {
-	    		cachedPasses = asyncCachedPasses.get();
+	    		cachedPasses = asyncCachedPasses.get(1L, TimeUnit.SECONDS);
 	    	}
-	    	catch(Exception ex) {}
-    	}
-
-    	try {
-	    	if(cachedPasses == null) {
-	    		double alt = safeGetElevationResponse(futureElevation);
-	    		cachedPasses = heavensScraper.getVisiblePasses(id, lat, lng, alt);
-
-	    		if(memcachedPasses != null) {
-	    			int expires = 0;
-	    			if(cachedPasses != null) {
-	    	        	cal.setTime(cachedPasses.getFrom());
-	    	        	cal.add(Calendar.DAY_OF_MONTH, 1);
-
-	    				expires = (int)(cal.getTimeInMillis() / 1000);
-	    			}
-    				memcachedPasses.set(key, expires, cachedPasses, transcoderPasses);
-	    		}
+	    	catch(Exception ex) {
+	    		asyncCachedPasses.cancel(true);
 	    	}
     	}
-    	catch(IOException ex) {
-    		log.warn("", ex);
-    		throw new InternalServerException("Internal IO error please try again later");
+
+    	if(cachedPasses == null) {
+    		double alt = safeGetElevationResponse(futureElevation);
+    		cachedPasses = heavensScraper.getVisiblePasses(id, lat, lng, alt);
+
+    		if(memcachedPasses != null) {
+    			int expires = 0;
+    			if(cachedPasses != null) {
+    	        	cal.setTime(cachedPasses.getFrom());
+    	        	cal.add(Calendar.DAY_OF_MONTH, 1);
+
+    				expires = (int)(cal.getTimeInMillis() / 1000);
+    			}
+				memcachedPasses.set(key, expires, cachedPasses, transcoderPasses);
+    		}
     	}
 
     	if(cachedPasses == null) {
@@ -245,7 +251,15 @@ public class SatelliteResource {
 	public Response getSatelliteTLE(@PathParam("id") String id) throws NotFoundException {
 		String key = DigestUtils.md5Hex(id);
 
-		TwoLineElement tle = memcachedTLE.get(key, transcoderTLE);
+		TwoLineElement tle = null;
+		Future<TwoLineElement> asyncTLE = memcachedTLE.asyncGet(key, transcoderTLE);
+		try {
+			tle = asyncTLE.get(1L, TimeUnit.SECONDS);
+		}
+		catch(Exception ex) {
+			asyncTLE.cancel(true);
+		}
+
 		if(tle == null) {
 			throw new NotFoundException("No two line element available");
 		}
@@ -290,9 +304,11 @@ public class SatelliteResource {
     	IridiumFlares cachedFlares = null;
     	if(asyncCachedFlares != null) {
     		try {
-    			cachedFlares = asyncCachedFlares.get();
+    			cachedFlares = asyncCachedFlares.get(1L, TimeUnit.SECONDS);
     		}
-    		catch(Exception ex) {}
+    		catch(Exception ex) {
+    			asyncCachedFlares.cancel(true);
+    		}
     	}
 
 		if(cachedFlares == null) {
@@ -311,6 +327,10 @@ public class SatelliteResource {
     		}
     	}
 
+		if(cachedFlares == null) {
+    		throw new NotFoundException("No flare information available");
+    	}
+		
     	cal.setTime(now);
     	cal.add(Calendar.DAY_OF_MONTH, 5);
 
@@ -345,12 +365,14 @@ public class SatelliteResource {
 
 	private Double safeGetElevationResponse(Future<ElevationResponse> futureElevation) {
 		try {
-			ElevationResponse elevation = futureElevation.get();
+			ElevationResponse elevation = futureElevation.get(1L, TimeUnit.SECONDS);
 			if(elevation != null && elevation.getFirstResult() != null) {
     			return elevation.getFirstResult().getElevation();
     		}
 		}
-		catch(Exception ex) {}
+		catch(Exception ex) {
+			futureElevation.cancel(false);
+		}
 		
 		return 0.0;
 	}

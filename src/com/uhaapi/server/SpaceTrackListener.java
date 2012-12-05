@@ -12,6 +12,7 @@ import net.spy.memcached.GsonTranscoder;
 import net.spy.memcached.KeyedMemcachedClient;
 import net.spy.memcached.MemcachedClientIF;
 
+import org.apache.log4j.Logger;
 import org.space_track.SpaceTrack;
 import org.space_track.SpaceTrackUpdater;
 import org.space_track.TwoLineElement;
@@ -22,6 +23,8 @@ import com.google.inject.Injector;
 public class SpaceTrackListener implements ServletContextListener {
 	private static final String SPACETRACK_UPDATE = SpaceTrackUpdater.class.getName();
 
+	private final Logger log = Logger.getLogger(getClass());
+
 	@Override
 	public void contextInitialized(ServletContextEvent evt) {
 		ServletContext ctx = evt.getServletContext();
@@ -29,6 +32,7 @@ public class SpaceTrackListener implements ServletContextListener {
 
 		SpaceTrack spaceTrack = injector.getInstance(SpaceTrack.class);
 		if(spaceTrack == null) {
+			log.info("No SpaceTrack credentials supplied: SpaceTrack support disabled");
 			return;
 		}
 

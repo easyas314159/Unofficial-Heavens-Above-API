@@ -14,7 +14,7 @@ import net.spy.memcached.MemcachedClient;
 import net.spy.memcached.MemcachedClientIF;
 import net.spy.memcached.NullMemcachedClient;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 
 public class MemcachedListener implements ServletContextListener {

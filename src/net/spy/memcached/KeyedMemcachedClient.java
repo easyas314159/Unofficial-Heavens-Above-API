@@ -8,16 +8,9 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import net.spy.memcached.CASResponse;
-import net.spy.memcached.CASValue;
-import net.spy.memcached.ConnectionObserver;
-import net.spy.memcached.MemcachedClientIF;
-import net.spy.memcached.NodeLocator;
-import net.spy.memcached.OperationTimeoutException;
 import net.spy.memcached.internal.BulkFuture;
 import net.spy.memcached.transcoders.Transcoder;
-
-import org.apache.commons.lang.NotImplementedException;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public class KeyedMemcachedClient implements MemcachedClientIF {
 	private final String key;
