@@ -13,6 +13,7 @@ import java.util.Vector;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
@@ -20,10 +21,8 @@ import org.htmlparser.Node;
 import org.htmlparser.NodeFilter;
 import org.htmlparser.Text;
 import org.htmlparser.filters.AndFilter;
-import org.htmlparser.filters.CssSelectorNodeFilter;
 import org.htmlparser.filters.HasAttributeFilter;
 import org.htmlparser.filters.HasParentFilter;
-import org.htmlparser.filters.NotFilter;
 import org.htmlparser.filters.TagNameFilter;
 import org.htmlparser.util.NodeList;
 import org.htmlparser.visitors.NodeVisitor;
@@ -35,6 +34,7 @@ import com.uhaapi.server.api.entity.Satellite;
 import com.uhaapi.server.api.entity.SatellitePass;
 import com.uhaapi.server.api.entity.SatellitePassWaypoint;
 import com.uhaapi.server.api.entity.SatellitePasses;
+import com.uhaapi.server.error.HeavensAboveException;
 import com.uhaapi.server.geo.LatLng;
 import com.uhaapi.server.http.HttpScraper;
 import com.uhaapi.server.util.ParamUtils;
@@ -95,7 +95,7 @@ public class HeavensAbove {
 	}
 
 	public SatellitePasses getVisiblePasses(int id, double lat, double lng,
-			double alt) {
+			double alt) throws HeavensAboveException {
 		List<NameValuePair> params = new Vector<NameValuePair>();
 		params.add(new BasicNameValuePair("satid", Integer.toString(id)));
 		params.add(new BasicNameValuePair("lat", Double.toString(lat)));
@@ -237,7 +237,7 @@ public class HeavensAbove {
 		return Compass.valueOf(name).getAzimuth();
 	}
 
-	public IridiumFlares getIridiumFlares(double lat, double lng, double alt) {
+	public IridiumFlares getIridiumFlares(double lat, double lng, double alt) throws HeavensAboveException {
 		List<NameValuePair> params = new Vector<NameValuePair>();
 		params.add(new BasicNameValuePair("lat", Double.toString(lat)));
 		params.add(new BasicNameValuePair("lng", Double.toString(lng)));
@@ -313,9 +313,11 @@ public class HeavensAbove {
 		return flare;
 	}
 
-	private NodeList getPage(String path, List<NameValuePair> params) {
+	private NodeList getPage(String path, List<NameValuePair> params) throws HeavensAboveException {
 		try {
 			return HttpScraper.scrape(httpClient, "heavens-above.com", -1, path, params);
+		} catch(ConnectTimeoutException ex) {
+			throw new HeavensAboveException("Heavens Above seems to be taking too long to respond please try again later");
 		} catch(Exception ex) {
 			return null;
 		}
