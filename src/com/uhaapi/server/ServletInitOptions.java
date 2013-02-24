@@ -6,6 +6,7 @@ public final class ServletInitOptions {
 	public static final String APP_PRETTY_PRINTING = "app.pretty_printing";
 
 	public static final String HTTP_USER_AGENT = "http.user_agent";
+	public static final String HTTP_CONNECTION_TIMEOUT = "http.connection.timeout";
 
 	public static final String HTTP_HEURISTIC_CACHE = "http.heuristic_cache";
 	public static final String HTTP_HEURISTIC_LIFETIME = "http.heuristic_lifetime";

@@ -89,6 +89,11 @@ public class CoreModule extends JerseyServletModule {
 			.annotatedWith(Names.named(ServletInitOptions.HTTP_USER_AGENT))
 			.toProvider(new StringProvider(ctx, ServletInitOptions.HTTP_USER_AGENT, null))
 			.asEagerSingleton();
+		bind(Integer.class)
+			.annotatedWith(Names.named(ServletInitOptions.HTTP_CONNECTION_TIMEOUT))
+			.toProvider(new IntegerProvider(ctx, ServletInitOptions.HTTP_CONNECTION_TIMEOUT, 45))
+			.asEagerSingleton();
+
 		bind(Boolean.class)
 			.annotatedWith(Names.named(ServletInitOptions.HTTP_HEURISTIC_CACHE))
 			.toProvider(new BooleanProvider(ctx, ServletInitOptions.HTTP_HEURISTIC_CACHE, CacheConfig.DEFAULT_HEURISTIC_CACHING_ENABLED))
