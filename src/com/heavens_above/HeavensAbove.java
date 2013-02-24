@@ -152,10 +152,10 @@ public class HeavensAbove {
 	}
 
 	private void extractAllPasses(NodeList page, SatellitePasses response) {
-		NodeFilter filter = new AndFilter(new HasParentFilter(
-				new HasAttributeFilter("id",
-						"ctl00_ContentPlaceHolder1_tblPasses"), false),
-				new NotFilter(new CssSelectorNodeFilter(".tablehead")));
+		NodeFilter filter = new AndFilter(
+				new TagNameFilter("tr"),
+				new HasAttributeFilter("onclick")
+			);
 
 		Calendar prevPassTime = Calendar.getInstance();
 		prevPassTime.setTime(response.getFrom());
@@ -271,17 +271,11 @@ public class HeavensAbove {
 	}
 
 	private void extractAllFlares(NodeList page, IridiumFlares flares) {
-		NodeList working = null;
-
-		// The Search Period
-		working = page.extractAllNodesThatMatch(new HasParentFilter(
-				new AndFilter(
-					new TagNameFilter("table"),
-					new HasAttributeFilter("class", "standardTable"))), true);
-		working.keepAllNodesThatMatch(
-				new AndFilter(
-					new TagNameFilter("tr"),
-					new NotFilter(new HasAttributeFilter("class", "tablehead"))), false);
+		NodeFilter filter = new AndFilter(
+				new TagNameFilter("tr"),
+				new HasAttributeFilter("onclick")
+			);
+		NodeList working = page.extractAllNodesThatMatch(filter, true);
 
 		List<IridiumFlare> results = new Vector<IridiumFlare>();
 		for(Node pass : working.toNodeArray()) {
@@ -297,7 +291,7 @@ public class HeavensAbove {
 	
 	private IridiumFlare extractNextFlare(NodeList pass) {
 		IridiumFlare flare = new IridiumFlare();
-		DateFormat format = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+		DateFormat format = new SimpleDateFormat("MMM dd',' HH:mm:ss");
 
 		Node[] nodes =  pass.toNodeArray();
 		for(int idx = 0; idx < nodes.length; ++idx) {
