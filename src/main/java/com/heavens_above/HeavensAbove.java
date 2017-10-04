@@ -58,7 +58,7 @@ public class HeavensAbove {
 		params.add(new BasicNameValuePair("SatID", Integer.toString(id)));
 
 		NodeList page = getPage("satinfo.aspx", params);
-		if(page == null) {
+		if (page == null) {
 			return null;
 		}
 
@@ -76,26 +76,26 @@ public class HeavensAbove {
 		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_lblTitle"), true);
 		String name = working.asString();
 		int idx = name.lastIndexOf('-');
-		if(idx > 0) {
+		if (idx > 0) {
 			satellite.setName(StringUtils.trimToNull(name.substring(0, idx)));
 		}
 
-		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_ContentPlaceHolder1_lblIntDesig"), true);
+		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_cph1_lblIntDesig"), true);
 		satellite.setIdc(StringUtils.trimToNull(working.asString()));
 
 		Date launched = null;
 		DateFormat f = new SimpleDateFormat("HH:mm, MMMM dd, yyyy");
 
-		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_ContentPlaceHolder1_lblLaunchDate"), true);
+		working = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_cph1_lblLaunchDate"), true);
 		try {
-			launched = f.parse(StringUtils.trimToNull(working.asString()));
+			String data = StringUtils.trimToNull(working.asString());
+			launched = f.parse(data);
+		} catch (ParseException e) {
 		}
-		catch(ParseException e) {}
 		satellite.setLaunched(launched);
 	}
 
-	public SatellitePasses getVisiblePasses(int id, double lat, double lng,
-			double alt) throws HeavensAboveException {
+	public SatellitePasses getVisiblePasses(int id, double lat, double lng, double alt) throws HeavensAboveException {
 		List<NameValuePair> params = new Vector<NameValuePair>();
 		params.add(new BasicNameValuePair("satid", Integer.toString(id)));
 		params.add(new BasicNameValuePair("lat", Double.toString(lat)));
@@ -104,7 +104,7 @@ public class HeavensAbove {
 		params.add(new BasicNameValuePair("tz", "UCT"));
 
 		NodeList page = getPage("PassSummary.aspx", params);
-		if(page == null) {
+		if (page == null) {
 			return null;
 		}
 
@@ -115,7 +115,7 @@ public class HeavensAbove {
 		response.setLocation(new LatLng(lat, lng));
 
 		extractTimeDetails(page, response);
-		if(response.getFrom() == null) {
+		if (response.getFrom() == null) {
 			return null;
 		}
 
@@ -124,48 +124,41 @@ public class HeavensAbove {
 		return response;
 	}
 
-	private void extractTimeDetails(NodeList page,
-			SatellitePasses passes) {
-		DateFormat searchRangeFormat = new SimpleDateFormat(
-				"d MMMM yyyy HH:mm");
+	private void extractTimeDetails(NodeList page, SatellitePasses passes) {
+		DateFormat searchRangeFormat = new SimpleDateFormat("d MMMM yyyy HH:mm");
 		NodeList working = null;
 
 		// The Search Period
-		working = page.extractAllNodesThatMatch(new HasParentFilter(
-				new HasAttributeFilter("id",
-						"ctl00_cph1_lblSearchStart")), true);
+		working = page.extractAllNodesThatMatch(
+				new HasParentFilter(new HasAttributeFilter("id", "ctl00_cph1_lblSearchStart")), true);
 		passes.setFrom(parseDate(searchRangeFormat, working.asString()));
 
-		working = page.extractAllNodesThatMatch(new HasParentFilter(
-				new HasAttributeFilter("id",
-						"ctl00_cph1_lblSearchEnd")), true);
+		working = page.extractAllNodesThatMatch(
+				new HasParentFilter(new HasAttributeFilter("id", "ctl00_cph1_lblSearchEnd")), true);
 		passes.setTo(parseDate(searchRangeFormat, working.asString()));
 	}
 
 	private Date parseDate(DateFormat fmt, String val) {
 		try {
 			return fmt.parse(val);
-		} catch(ParseException ex) {
+		} catch (ParseException ex) {
 			log.error("Failed to parse time", ex);
 		}
 		return null;
 	}
 
 	private void extractAllPasses(NodeList page, SatellitePasses response) {
-		NodeFilter filter = new AndFilter(
-				new TagNameFilter("tr"),
-				new HasAttributeFilter("onclick")
-			);
+		NodeFilter filter = new AndFilter(new TagNameFilter("tr"), new HasAttributeFilter("onclick"));
 
 		Calendar prevPassTime = Calendar.getInstance();
 		prevPassTime.setTime(response.getFrom());
 
 		List<SatellitePass> results = new Vector<SatellitePass>();
 		NodeList allPasses = page.extractAllNodesThatMatch(filter, true);
-		for(Node pass : allPasses.toNodeArray()) {
+		for (Node pass : allPasses.toNodeArray()) {
 			SatellitePass sp = extractNextPass(pass.getChildren(), prevPassTime);
 
-			if(response.getTo() == null || response.getTo().before(sp.getEnd().getTime())) {
+			if (response.getTo() == null || response.getTo().before(sp.getEnd().getTime())) {
 				response.setTo(sp.getEnd().getTime());
 			}
 
@@ -193,40 +186,40 @@ public class HeavensAbove {
 			result = new SatellitePass();
 			result.setMagnitude(ParamUtils.asDouble(details.get(1)));
 
-			Date start = format.parse(String.format("%s %04d %s",
-					details.get(0), prevPassTime.get(Calendar.YEAR),
-					details.get(2)));
-			if(nextPassTime.getTimeInMillis() < prevPassTime.getTimeInMillis()
-					&& prevPassTime.get(Calendar.MONTH) != prevPassTime
-							.get(Calendar.MONTH)) {
+			Date start = format.parse(
+					String.format("%s %04d %s", details.get(0), prevPassTime.get(Calendar.YEAR), details.get(2)));
+			if (nextPassTime.getTimeInMillis() < prevPassTime.getTimeInMillis()
+					&& prevPassTime.get(Calendar.MONTH) != prevPassTime.get(Calendar.MONTH)) {
 				nextPassTime.add(Calendar.YEAR, 1);
 				start = nextPassTime.getTime();
 			}
 			prevPassTime.setTimeInMillis(nextPassTime.getTimeInMillis());
-			result.setStart(new SatellitePassWaypoint(start, ParamUtils
-					.asDouble(details.get(3).replaceAll("[^0-9\\.]", "")), convertCompassPoint(details
-					.get(4))));
+			result.setStart(
+					new SatellitePassWaypoint(start, ParamUtils.asDouble(details.get(3).replaceAll("[^0-9\\.]", "")),
+							convertCompassPoint(details.get(4))));
 
-			Date max = format.parse(String.format("%s %04d %s", details.get(0),
-					prevPassTime.get(Calendar.YEAR), details.get(5)));
-			if(max.before(start)) {
+			Date max = format.parse(
+					String.format("%s %04d %s", details.get(0), prevPassTime.get(Calendar.YEAR), details.get(5)));
+			if (max.before(start)) {
 				nextPassTime.add(Calendar.DAY_OF_MONTH, 1);
 				max = nextPassTime.getTime();
 			}
 			prevPassTime.setTimeInMillis(nextPassTime.getTimeInMillis());
-			result.setMax(new SatellitePassWaypoint(max, ParamUtils.asDouble(details
-					.get(6).replaceAll("[^0-9\\.]", "")), convertCompassPoint(details.get(7))));
+			result.setMax(
+					new SatellitePassWaypoint(max, ParamUtils.asDouble(details.get(6).replaceAll("[^0-9\\.]", "")),
+							convertCompassPoint(details.get(7))));
 
-			Date end = format.parse(String.format("%s %04d %s", details.get(0),
-					prevPassTime.get(Calendar.YEAR), details.get(8)));
-			if(end.before(start)) {
+			Date end = format.parse(
+					String.format("%s %04d %s", details.get(0), prevPassTime.get(Calendar.YEAR), details.get(8)));
+			if (end.before(start)) {
 				nextPassTime.add(Calendar.DAY_OF_MONTH, 1);
 				end = nextPassTime.getTime();
 			}
 			prevPassTime.setTimeInMillis(nextPassTime.getTimeInMillis());
-			result.setEnd(new SatellitePassWaypoint(end, ParamUtils.asDouble(details
-					.get(9).replaceAll("[^0-9\\.]", "")), convertCompassPoint(details.get(10))));
-		} catch(Exception ex) {
+			result.setEnd(
+					new SatellitePassWaypoint(end, ParamUtils.asDouble(details.get(9).replaceAll("[^0-9\\.]", "")),
+							convertCompassPoint(details.get(10))));
+		} catch (Exception ex) {
 			log.warn("Failed to parse satellite pass", ex);
 		}
 
@@ -245,7 +238,7 @@ public class HeavensAbove {
 		params.add(new BasicNameValuePair("tz", "UCT"));
 
 		NodeList page = getPage("IridiumFlares.aspx", params);
-		if(page == null) {
+		if (page == null) {
 			return null;
 		}
 
@@ -255,17 +248,21 @@ public class HeavensAbove {
 
 		DateFormat parser = new SimpleDateFormat("HH:mm EEEE, d MMMM, yyyy");
 
-		Node parentNode1 = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_cph1_lblSearchStart"), true).elementAt(0);
+		Node parentNode1 = page
+				.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_cph1_lblSearchStart"), true).elementAt(0);
 		Node fromNode = parentNode1.getFirstChild();
-		Node parentNode2 = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_cph1_lblSearchEnd"), true).elementAt(0);
+		Node parentNode2 = page.extractAllNodesThatMatch(new HasAttributeFilter("id", "ctl00_cph1_lblSearchEnd"), true)
+				.elementAt(0);
 		Node toNode = parentNode2.getFirstChild();
 
 		try {
 			response.setFrom(parser.parse(fromNode.getText()));
-		} catch(ParseException ex) {}
+		} catch (ParseException ex) {
+		}
 		try {
 			response.setTo(parser.parse(toNode.getText()));
-		} catch(ParseException ex) {}
+		} catch (ParseException ex) {
+		}
 
 		extractAllFlares(page, response);
 
@@ -273,16 +270,13 @@ public class HeavensAbove {
 	}
 
 	private void extractAllFlares(NodeList page, IridiumFlares flares) {
-		NodeFilter filter = new AndFilter(
-				new TagNameFilter("tr"),
-				new HasAttributeFilter("onclick")
-			);
+		NodeFilter filter = new AndFilter(new TagNameFilter("tr"), new HasAttributeFilter("onclick"));
 		NodeList working = page.extractAllNodesThatMatch(filter, true);
 
 		List<IridiumFlare> results = new Vector<IridiumFlare>();
-		for(Node pass : working.toNodeArray()) {
+		for (Node pass : working.toNodeArray()) {
 			IridiumFlare flare = extractNextFlare(pass.getChildren());
-			if(flare == null) {
+			if (flare == null) {
 				continue;
 			}
 			results.add(flare);
@@ -295,15 +289,15 @@ public class HeavensAbove {
 		IridiumFlare flare = new IridiumFlare();
 		DateFormat format = new SimpleDateFormat("MMM dd',' HH:mm:ss yyyy");
 
-		Node[] nodes =  pass.toNodeArray();
-		for(int idx = 0; idx < nodes.length; ++idx) {
+		Node[] nodes = pass.toNodeArray();
+		for (int idx = 0; idx < nodes.length; ++idx) {
 			nodes[idx] = nodes[idx].getFirstChild();
 		}
 
 		try {
 			nodes[0] = nodes[0].getFirstChild();
-			flare.setTime(format.parse(nodes[0].getText() + " " + Calendar.getInstance ().get(Calendar.YEAR)));
-		} catch(ParseException ex) {
+			flare.setTime(format.parse(nodes[0].getText() + " " + Calendar.getInstance().get(Calendar.YEAR)));
+		} catch (ParseException ex) {
 			return null;
 		}
 
@@ -318,9 +312,10 @@ public class HeavensAbove {
 	private NodeList getPage(String path, List<NameValuePair> params) throws HeavensAboveException {
 		try {
 			return HttpScraper.scrape(httpClient, "heavens-above.com", -1, path, params);
-		} catch(ConnectTimeoutException ex) {
-			throw new HeavensAboveException("Heavens Above seems to be taking too long to respond please try again later");
-		} catch(Exception ex) {
+		} catch (ConnectTimeoutException ex) {
+			throw new HeavensAboveException(
+					"Heavens Above seems to be taking too long to respond please try again later");
+		} catch (Exception ex) {
 			return null;
 		}
 	}
